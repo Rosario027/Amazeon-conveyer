@@ -1,0 +1,175 @@
+// Amazeon ERP — PostgreSQL schema.
+// Deployed with `prisma db push` on boot (see server/lib/migrate-and-start.js).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Auth ────────────────────────────────────────────────────────
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  passHash  String
+  role      String   @default("admin") // admin | user
+  createdAt DateTime @default(now())
+}
+
+// ── Company / invoice settings (singleton, id = 1) ──────────────
+// Every printable element of the invoice is editable here.
+model CompanySettings {
+  id               Int      @id @default(1)
+  companyName      String   @default("Amazeon Shopping")
+  tagline          String   @default("OE Belts & Conveyors")
+  addressLines     String[] @default([])
+  gstin            String   @default("")
+  stateName        String   @default("Tamil Nadu")
+  stateCode        String   @default("33")
+  email            String   @default("")
+  phone            String   @default("")
+  invoiceTitle     String   @default("TAX INVOICE")
+  invoicePrefix    String   @default("AMZ-")
+  nextInvoiceSeq   Int      @default(1)
+  // Payment settings shown on the invoice
+  paymentTerms     String   @default("100% Advance")
+  bankName         String   @default("")
+  bankAccountName  String   @default("")
+  bankAccount      String   @default("")
+  bankIfsc         String   @default("")
+  bankBranch       String   @default("")
+  upiId            String   @default("")
+  showBankDetails  Boolean  @default(true)
+  showUpi          Boolean  @default(true)
+  // Boilerplate lines at the bottom of the invoice
+  footerLines      String[] @default([])
+  termsLines       String[] @default([])
+  declaration      String   @default("Certified that the particulars given above are true and correct and the amount indicated represents the price actually charged.") @db.Text
+  signatory        String   @default("Authorised Signatory")
+  logoDataUrl      String?  @db.Text
+  signatureDataUrl String?  @db.Text
+  updatedAt        DateTime @updatedAt
+}
+
+// ── Customers (auto-created / linked when an invoice is saved) ──
+model Customer {
+  id        Int       @id @default(autoincrement())
+  kind      String    @default("B2B") // B2B | B2C
+  name      String
+  gstin     String    @default("")
+  email     String    @default("")
+  phone     String    @default("")
+  billTo    String    @default("") @db.Text
+  shipTo    String    @default("") @db.Text
+  stateName String    @default("")
+  stateCode String    @default("")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  invoices  Invoice[]
+}
+
+// ── Invoices ────────────────────────────────────────────────────
+model Invoice {
+  id             Int       @id @default(autoincrement())
+  invoiceNo      String    @unique
+  invoiceDate    DateTime  @default(now())
+  invoiceType    String    @default("B2B") // B2B | B2C
+  status         String    @default("active") // active | cancelled
+  reverseCharge  Boolean   @default(false)
+  customerId     Int?
+  customer       Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  // Buyer snapshot (frozen at invoice time, independent of customer edits)
+  buyerName      String
+  buyerGstin     String    @default("")
+  buyerEmail     String    @default("")
+  buyerPhone     String    @default("")
+  billTo         String    @default("") @db.Text
+  shipTo         String    @default("") @db.Text
+  buyerStateName String    @default("")
+  buyerStateCode String    @default("")
+  placeOfSupply  String    @default("")
+  taxMode        String    @default("intra") // intra (CGST+SGST) | inter (IGST)
+  poRefNo        String    @default("")
+  paymentTerms   String    @default("")
+  notes          String    @default("") @db.Text
+  // Stored totals (computed server-side by lib/calc.js)
+  subTotal       Float     @default(0)
+  cgstAmount     Float     @default(0)
+  sgstAmount     Float     @default(0)
+  igstAmount     Float     @default(0)
+  roundOff       Float     @default(0)
+  grandTotal     Float     @default(0)
+  createdBy      String    @default("")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  items          InvoiceItem[]
+}
+
+model InvoiceItem {
+  id          Int     @id @default(autoincrement())
+  invoiceId   Int
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  slNo        Int     @default(1)
+  description String  @db.Text
+  hsnCode     String  @default("")
+  partNo      String  @default("")
+  qty         Float   @default(1)
+  unit        String  @default("Nos")
+  rate        Float   @default(0)
+  gstRate     Float   @default(18)
+  taxable     Float   @default(0)
+}
+
+// ── Purchases (manual entries + uploaded documents) ─────────────
+model Purchase {
+  id           Int            @id @default(autoincrement())
+  purchaseDate DateTime       @default(now())
+  vendorName   String
+  vendorGstin  String         @default("")
+  billNo       String         @default("")
+  description  String         @default("") @db.Text
+  taxableValue Float          @default(0)
+  cgst         Float          @default(0)
+  sgst         Float          @default(0)
+  igst         Float          @default(0)
+  totalAmount  Float          @default(0)
+  entryType    String         @default("manual") // manual | upload
+  notes        String         @default("") @db.Text
+  createdBy    String         @default("")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  files        PurchaseFile[]
+}
+
+// ── Accounts: manual money-in / money-out entries ───────────────
+// The ledger view merges these with invoices (inflow) and purchases
+// (outflow) to show the full cash flow for a period.
+model AccountEntry {
+  id          Int      @id @default(autoincrement())
+  entryDate   DateTime @default(now())
+  kind        String   @default("out") // in | out
+  category    String   @default("General")
+  description String   @default("") @db.Text
+  mode        String   @default("Cash") // Cash | Bank | UPI | Card | Other
+  refNo       String   @default("")
+  amount      Float    @default(0)
+  createdBy   String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Uploaded bills (PDF / image) stored in the database and retrievable
+// any time from the Purchases module.
+model PurchaseFile {
+  id         Int      @id @default(autoincrement())
+  purchaseId Int
+  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  filename   String
+  mimeType   String   @default("application/octet-stream")
+  size       Int      @default(0)
+  data       Bytes
+  uploadedAt DateTime @default(now())
+}

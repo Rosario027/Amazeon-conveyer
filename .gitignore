@@ -1,0 +1,13 @@
+node_modules/
+client/node_modules/
+client/dist/
+.env
+.env.local
+*.log
+npm-debug.log*
+.DS_Store
+dist/
+
+# Local-only test artifacts (embedded Postgres, smoke scripts, render output)
+/_*
+_pgdata/

@@ -1,0 +1,34 @@
+{
+  "name": "amazeon-erp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Amazeon Shopping (OE Belts & Conveyors) ERP — GST invoicing (B2B/B2C), purchases with document vault, GST Excel reports.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:server": "nodemon server/index.js",
+    "dev:client": "npm --prefix client run dev",
+    "dev": "concurrently -n server,client -c blue,magenta \"npm:dev:server\" \"npm:dev:client\"",
+    "build:client": "npm --prefix client install --no-audit --no-fund && npm --prefix client run build",
+    "prisma:generate": "prisma generate",
+    "build": "npm run prisma:generate && npm run build:client",
+    "db:push": "prisma db push",
+    "seed": "node server/lib/seed.js",
+    "start": "node server/lib/migrate-and-start.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
+    "express": "^4.21.1",
+    "pdfmake": "^0.2.12",
+    "prisma": "^5.22.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "nodemon": "^3.1.7"
+  }
+}

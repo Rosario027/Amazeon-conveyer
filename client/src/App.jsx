@@ -1,0 +1,108 @@
+import React, { useEffect, useState } from 'react';
+import { Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
+import { api, getStoredUser, getToken, clearAuth } from './api.js';
+import { LogoMark, Wordmark } from './logo.jsx';
+import Login from './pages/Login.jsx';
+import Dashboard from './pages/Dashboard.jsx';
+import InvoiceEditor from './pages/InvoiceEditor.jsx';
+import Invoices from './pages/Invoices.jsx';
+import InvoiceView from './pages/InvoiceView.jsx';
+import Settings from './pages/Settings.jsx';
+import Purchases from './pages/Purchases.jsx';
+import Accounts from './pages/Accounts.jsx';
+import Reports from './pages/Reports.jsx';
+import AdminConfig from './pages/AdminConfig.jsx';
+
+// ── Sidebar icons (white stroke SVGs) ──
+const I = ({ children }) => (
+  <svg className="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{children}</svg>
+);
+const IcHome = () => <I><path d="M3 10.5 12 3l9 7.5" /><path d="M5 9.5V21h14V9.5" /><path d="M10 21v-6h4v6" /></I>;
+const IcNew = () => <I><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M12 9v6M9 12h6" /></I>;
+const IcList = () => <I><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></I>;
+const IcGear = () => <I><circle cx="12" cy="12" r="3.2" /><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.6a7 7 0 0 0-2 1.2l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 2 1.2l.4 2.6h4l.4-2.6a7 7 0 0 0 2-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2Z" /></I>;
+const IcCart = () => <I><circle cx="9" cy="20" r="1.6" /><circle cx="17" cy="20" r="1.6" /><path d="M3 4h2l2.6 12h10.2l2.2-8H6.2" /></I>;
+const IcChart = () => <I><path d="M4 20V4" /><path d="M4 20h16" /><rect x="7" y="11" width="3" height="6" rx="0.5" /><rect x="12" y="7" width="3" height="10" rx="0.5" /><rect x="17" y="13" width="3" height="4" rx="0.5" /></I>;
+const IcShield = () => <I><path d="M12 3 5 6v5c0 5 3.2 8.4 7 10 3.8-1.6 7-5 7-10V6l-7-3Z" /><path d="M9.5 12l2 2 3.5-4" /></I>;
+const IcWallet = () => <I><rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M3 9.5h18" /><circle cx="16.5" cy="14.5" r="1.2" /></I>;
+
+function Sidebar({ open, onNavigate }) {
+  const link = ({ isActive }) => 'nav-link' + (isActive ? ' active' : '');
+  return (
+    <aside className={`sidebar ${open ? 'open' : ''}`}>
+      <div className="brand">
+        <span className="brand-mark"><LogoMark size={34} /></span>
+        <Wordmark compact />
+      </div>
+      <nav onClick={onNavigate}>
+        <div className="nav-group">Invoicing</div>
+        <NavLink to="/" end className={link}><IcHome />Dashboard</NavLink>
+        <NavLink to="/invoices/new" className={link}><IcNew />New Invoice</NavLink>
+        <NavLink to="/invoices" end className={link}><IcList />Invoices</NavLink>
+        <div className="nav-group">Configuration</div>
+        <NavLink to="/settings" className={link}><IcGear />Invoice Settings</NavLink>
+        <div className="nav-group">Accounts</div>
+        <NavLink to="/purchases" className={link}><IcCart />Purchases</NavLink>
+        <NavLink to="/accounts" className={link}><IcWallet />Accounts</NavLink>
+        <NavLink to="/reports" className={link}><IcChart />Reports</NavLink>
+        <div className="nav-group">Administration</div>
+        <NavLink to="/admin" className={link}><IcShield />Admin Config</NavLink>
+      </nav>
+      <div className="sidebar-foot">Amazeon ERP v1.0</div>
+    </aside>
+  );
+}
+
+export default function App() {
+  const [user, setUser] = useState(getStoredUser());
+  const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
+
+  // Validate stored token on load; a dead token drops back to login.
+  useEffect(() => {
+    if (!getToken()) return;
+    api.me().then((r) => setUser(r.user)).catch(() => { clearAuth(); setUser(null); });
+  }, []);
+
+  if (!user) return <Login onLogin={setUser} />;
+
+  const logout = () => {
+    clearAuth();
+    setUser(null);
+    navigate('/');
+  };
+
+  return (
+    <div className="app-root">
+      <Sidebar open={menuOpen} onNavigate={() => setMenuOpen(false)} />
+      {menuOpen && <div className="sidebar-backdrop" onClick={() => setMenuOpen(false)} />}
+      <div className="main-col">
+        <header className="topbar">
+          <button className="hamburger" onClick={() => setMenuOpen((v) => !v)} aria-label="Menu">☰</button>
+          <div className="topbar-title">Amazeon Shopping · ERP</div>
+          <div className="topbar-right">
+            <span className="user-chip">👤 {user.username}</span>
+            <button className="btn-logout" onClick={logout}>Logout</button>
+          </div>
+        </header>
+        <main className="content">
+          <div className="content-inner">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/invoices" element={<Invoices />} />
+              <Route path="/invoices/new" element={<InvoiceEditor />} />
+              <Route path="/invoices/:id" element={<InvoiceView />} />
+              <Route path="/invoices/:id/edit" element={<InvoiceEditor />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/purchases" element={<Purchases />} />
+              <Route path="/accounts" element={<Accounts />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/admin" element={<AdminConfig user={user} />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}

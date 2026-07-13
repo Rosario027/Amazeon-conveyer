@@ -1,0 +1,134 @@
+/* ── Invoice preview (A4 twin of the PDF) + print rules ──────── */
+.preview-wrap { display: flex; justify-content: center; }
+
+.inv-sheet {
+  background: #fff;
+  width: 210mm;
+  max-width: 100%;
+  min-height: 250mm;
+  padding: 14mm 12mm;
+  box-shadow: 0 4px 24px rgba(20, 40, 80, 0.15);
+  border-radius: 4px;
+  color: #232b35;
+  font-size: 12.5px;
+  position: relative;
+}
+.inv-cancelled { opacity: 0.96; }
+.inv-cancel-stamp {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-24deg);
+  font-size: 64px;
+  font-weight: 900;
+  color: rgba(217, 45, 32, 0.16);
+  letter-spacing: 6px;
+  pointer-events: none;
+}
+
+.inv-head { display: flex; gap: 14px; align-items: flex-start; }
+.inv-logo img { max-height: 58px; max-width: 120px; object-fit: contain; }
+.inv-logomark { color: #1e5aa8; display: block; }
+.inv-logomark .lg-belt { color: #1e5aa8; }
+.inv-co { flex: 1; }
+.inv-co-name { font-size: 20px; font-weight: 800; color: #1e5aa8; }
+.inv-co-tag { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: #ef8722; margin: 1px 0 4px; }
+.inv-title-block { text-align: right; min-width: 220px; }
+.inv-title { font-size: 21px; font-weight: 800; }
+.inv-type { font-size: 10.5px; font-weight: 700; color: #ef8722; margin: 2px 0 8px; }
+.inv-meta-table { margin-left: auto; border-collapse: collapse; }
+.inv-meta-table td { padding: 1.5px 0 1.5px 12px; font-size: 11.5px; text-align: right; }
+.inv-meta-table td:first-child { color: #68758a; }
+.inv-meta-table td:last-child { font-weight: 700; }
+
+.inv-small { font-size: 11px; line-height: 1.45; }
+.inv-tiny { font-size: 10px; line-height: 1.5; }
+.inv-bold { font-weight: 700; }
+.inv-italic { font-style: italic; }
+.inv-muted { color: #68758a; }
+
+.inv-rule { height: 2.5px; background: #ef8722; margin: 10px 0; }
+.inv-rule.thin { height: 1px; background: #d9e1ec; margin: 12px 0 10px; }
+
+.inv-strip {
+  background: #eaf1fa;
+  border-radius: 4px;
+  padding: 7px 12px;
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  margin-bottom: 12px;
+}
+.inv-strip em { font-style: normal; color: #68758a; }
+
+.inv-parties { display: flex; gap: 12px; margin-bottom: 12px; }
+.inv-party { flex: 1; border: 0.5px solid #d9e1ec; }
+.inv-party-head {
+  background: #1e5aa8;
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  padding: 5px 10px;
+}
+.inv-party-body { padding: 8px 10px; }
+
+.inv-items { width: 100%; border-collapse: collapse; }
+.inv-items th {
+  background: #1e5aa8;
+  color: #fff;
+  font-size: 9.5px;
+  letter-spacing: 0.7px;
+  padding: 6px 7px;
+  text-align: left;
+  border: 0.5px solid #1e5aa8;
+}
+.inv-items td { padding: 5px 7px; border: 0.5px solid #d9e1ec; font-size: 11.5px; }
+.inv-items tbody tr:nth-child(even) td { background: #f4f7fb; }
+.inv-items .r, .inv-items th.r { text-align: right; }
+.inv-items .c, .inv-items th.c { text-align: center; }
+
+.inv-totals-row { display: flex; margin-top: 10px; }
+.inv-totals-spacer { flex: 1; }
+.inv-totals { border-collapse: collapse; min-width: 250px; }
+.inv-totals td { padding: 4px 8px; font-size: 11.5px; border-bottom: 0.5px solid #e4eaf2; }
+.inv-totals td:first-child { color: #68758a; }
+.inv-totals td.r { text-align: right; font-variant-numeric: tabular-nums; }
+.inv-totals tr.inv-grand td {
+  background: #ef8722;
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  border: none;
+  padding: 7px 8px;
+}
+
+.inv-words { margin: 10px 0 4px; font-size: 11.5px; }
+
+.inv-foot { display: flex; gap: 20px; align-items: flex-end; }
+.inv-foot-left { flex: 1; }
+.inv-foot-head { font-size: 10px; font-weight: 800; color: #1e5aa8; margin: 7px 0 2px; }
+.inv-foot-right { width: 200px; text-align: center; font-size: 11px; }
+.inv-sign-space { height: 46px; display: flex; align-items: center; justify-content: center; }
+.inv-sign-space img { max-height: 44px; max-width: 140px; object-fit: contain; }
+.inv-sign-line { border-top: 0.5px solid #68758a; margin: 0 12px 3px; }
+
+/* ── Print: show ONLY the invoice sheet (visibility-based — hiding
+      ancestors with display:none breaks page layout) ── */
+@media print {
+  body { background: #fff; }
+  body * { visibility: hidden; }
+  .inv-sheet, .inv-sheet * { visibility: visible; }
+  .inv-sheet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    min-height: 0;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 8mm 6mm;
+  }
+  .no-print { display: none !important; }
+}
