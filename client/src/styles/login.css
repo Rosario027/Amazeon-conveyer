@@ -20,14 +20,8 @@
   width: 100%;
   max-width: 400px;
 }
-.login-brand { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 18px; text-align: center; }
-.login-mark { color: #1e5aa8; }
-.login-mark .lg-belt { color: #1e5aa8; }
-.login-brand .wm-name { font-size: 24px; font-weight: 800; }
-.login-brand .wm-blue { color: #1e5aa8; }
-.login-brand .wm-orange { color: #ef8722; }
-.login-brand .wm-gray { color: #68758a; font-size: 18px; }
-.login-brand .wm-tag { font-size: 10.5px; letter-spacing: 2px; color: #68758a; }
+.login-brand { display: flex; justify-content: center; margin-bottom: 18px; }
+.login-brand svg { max-width: 100%; height: auto; }
 
 .login-card h1 { font-size: 19px; margin: 4px 0 2px; text-align: center; }
 .login-sub { text-align: center; color: #68758a; font-size: 13px; margin: 0 0 18px; }

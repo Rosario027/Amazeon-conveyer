@@ -58,6 +58,7 @@ export default function AdminConfig({ user }) {
 
       <div className="card">
         <h2>Login Accounts</h2>
+        <div className="table-scroll">
         <table className="data-table">
           <thead><tr><th>Username</th><th>Role</th><th>Created</th><th className="r">Actions</th></tr></thead>
           <tbody>
@@ -74,6 +75,7 @@ export default function AdminConfig({ user }) {
             ))}
           </tbody>
         </table>
+        </div>
 
         <h3 className="sub-head">Add account</h3>
         <div className="form-row">

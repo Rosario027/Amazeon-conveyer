@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { api, storeAuth } from '../api.js';
-import { LogoMark, Wordmark } from '../logo.jsx';
+import { Logo } from '../logo.jsx';
 
 export default function Login({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -27,8 +27,7 @@ export default function Login({ onLogin }) {
     <div className="login-wrap">
       <div className="login-card">
         <div className="login-brand">
-          <span className="login-mark"><LogoMark size={64} /></span>
-          <Wordmark />
+          <Logo height={96} />
         </div>
         <h1>Sign in</h1>
         <p className="login-sub">ERP — Invoicing · Purchases · GST Reports</p>

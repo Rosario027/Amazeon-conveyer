@@ -99,6 +99,12 @@ export const api = {
   updateEntry: (id, data) => request(`/api/accounts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteEntry: (id) => request(`/api/accounts/${id}`, { method: 'DELETE' }),
   downloadLedger: (from, to) => download(`/api/accounts/ledger.xlsx${qs({ from, to })}`, `Accounts-${from}-to-${to}.xlsx`),
+  commissions: (from, to) => request(`/api/accounts/commissions${qs({ from, to })}`),
+  // agents (referral commission)
+  agents: () => request('/api/agents'),
+  createAgent: (data) => request('/api/agents', { method: 'POST', body: JSON.stringify(data) }),
+  updateAgent: (id, data) => request(`/api/agents/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteAgent: (id) => request(`/api/agents/${id}`, { method: 'DELETE' }),
   // reports
   gstSummary: (from, to) => request(`/api/reports/gst-summary${qs({ from, to })}`),
   downloadGstReport: (from, to) => download(`/api/reports/gst.xlsx${qs({ from, to })}`, `GST-Report-${from}-to-${to}.xlsx`),

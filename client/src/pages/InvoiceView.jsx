@@ -52,6 +52,14 @@ export default function InvoiceView() {
           )}
         </div>
       </div>
+      {invoice.commissionEnabled && invoice.commissionAmount > 0 && (
+        <div className="comm-banner no-print">
+          🔒 Internal — referral commission: <b>₹ {invoice.commissionAmount.toLocaleString('en-IN')}</b> to{' '}
+          <b>{invoice.agent?.name || '(agent removed)'}</b>
+          {invoice.commissionType === 'percent' && <> ({invoice.commissionRate}% of taxable value)</>}
+          {' '}· tracked in Accounts → Commissions · not printed on the invoice
+        </div>
+      )}
       <div className="preview-wrap">
         <InvoicePreview invoice={invoice} settings={settings} />
       </div>

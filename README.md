@@ -11,9 +11,18 @@ document vault, monthly GST Excel reports, and fully customizable invoice settin
 | **Invoicing** | B2B/B2C selector, GSTIN validation, Bill To / Ship To, HSN + Part No lines, per-line GST rates, rate-wise CGST/SGST/IGST breakup (intra vs inter-state auto-derived from state codes), auto numbering, PDF download, print, cancel (GST-safe — numbering preserved) |
 | **Invoice Settings** | Company block, GSTIN/state, logo & signature upload, invoice title/prefix/next number, payment settings (bank + UPI), terms/footer boilerplate lines, declaration — everything printed is editable |
 | **Purchases** | Manual entries and/or uploaded bills (PDF/image/doc ≤10MB) stored **in PostgreSQL** and retrievable any time; month filter & search |
-| **Accounts** | Inflow/outflow tracker — manual expense/income entries merged with invoices (in) and purchases (out); period filter, category breakdown, Excel export |
+| **Accounts** | Three tabs: **Ledger** (inflow/outflow — invoices in, purchases + referral commissions out, manual expense/income entries incl. **advance payments** tagged with the party), **Commissions** (per-invoice referral commissions + agent-wise totals), **Agents** (register commission agents — name/phone/PAN mandatory; email/bank/remarks optional). Period filter + Excel export (Summary, category breakdown, full Ledger, Commissions sheet) |
 | **Reports** | Period picker (defaults to current month) with on-screen GST position + downloadable Excel: Summary, B2B, B2C, Rate-wise, HSN, Documents Issued, Purchases |
 | **Admin Config** | Manage login accounts, reset passwords, change own password |
+
+**Phone-first:** a 📱/🖥️ toggle in the topbar switches between Mobile and Desktop
+layouts (persisted per device); Mobile gets a drawer sidebar, single-column forms
+and scrollable tables — Desktop mode works on phones too (zoomed-out page).
+
+**Referral commissions are internal only** — chosen at the bottom of the invoice
+editor (agent + percentage-of-taxable-value or fixed amount), stored with the
+invoice, shown in Accounts → Commissions and the Excel export, but **never printed
+on the invoice PDF or preview**.
 
 ## Logins (seeded)
 

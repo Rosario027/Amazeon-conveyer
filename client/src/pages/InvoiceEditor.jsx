@@ -26,6 +26,12 @@ const emptyForm = (settings) => ({
   paymentTerms: '',
   notes: '',
   items: [emptyItem()],
+  // referral commission — internal only, never printed on the invoice
+  commissionEnabled: false,
+  agentId: '',
+  commissionType: 'percent',
+  commissionRate: '',
+  commissionAmount: '',
 });
 
 export default function InvoiceEditor() {
@@ -35,6 +41,7 @@ export default function InvoiceEditor() {
 
   const [settings, setSettings] = useState(null);
   const [form, setForm] = useState(null);
+  const [agents, setAgents] = useState([]);
   const [nextNo, setNextNo] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -48,12 +55,16 @@ export default function InvoiceEditor() {
     (async () => {
       const s = await api.settings();
       setSettings(s);
+      api.agents().then(setAgents).catch(() => {});
       if (editing) {
         const inv = await api.invoice(id);
         setForm({
           ...inv,
           invoiceDate: localISO(new Date(inv.invoiceDate)),
           items: inv.items.map((it) => ({ ...it })),
+          agentId: inv.agentId || '',
+          commissionRate: inv.commissionRate || '',
+          commissionAmount: inv.commissionAmount || '',
         });
       } else {
         setForm(emptyForm(s));
@@ -279,6 +290,51 @@ export default function InvoiceEditor() {
           </table>
         </div>
         <button type="button" className="btn btn-ghost" onClick={addItem}>+ Add line</button>
+      </div>
+
+      {/* ── Referral commission (internal only) ── */}
+      <div className="card">
+        <h2>Referral Commission <span className="muted h-sub">internal reference only — never printed on the invoice</span></h2>
+        <div className="comm-row">
+          <div className="comm-yesno">
+            <button type="button" className={`pill ${!form.commissionEnabled ? 'sel' : ''}`} onClick={() => set({ commissionEnabled: false })}>No</button>
+            <button type="button" className={`pill ${form.commissionEnabled ? 'sel' : ''}`} onClick={() => set({ commissionEnabled: true })}>Yes</button>
+          </div>
+          {form.commissionEnabled && (
+            <>
+              <label className="comm-field">Agent
+                <select value={form.agentId} onChange={(e) => set({ agentId: e.target.value })}>
+                  <option value="">— select agent —</option>
+                  {agents.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.pan})</option>)}
+                </select>
+              </label>
+              <label className="comm-field">Basis
+                <select value={form.commissionType} onChange={(e) => set({ commissionType: e.target.value })}>
+                  <option value="percent">Percentage of taxable value</option>
+                  <option value="amount">Fixed amount</option>
+                </select>
+              </label>
+              {form.commissionType === 'percent' ? (
+                <label className="comm-field">Percentage (%)
+                  <input type="number" min="0" max="100" step="any" value={form.commissionRate} onChange={(e) => set({ commissionRate: e.target.value })} />
+                </label>
+              ) : (
+                <label className="comm-field">Amount (₹)
+                  <input type="number" min="0" step="any" value={form.commissionAmount} onChange={(e) => set({ commissionAmount: e.target.value })} />
+                </label>
+              )}
+              <div className="comm-calc">
+                Commission: <b>₹ {formatINR(form.commissionType === 'percent'
+                  ? (totals.subTotal * (Number(form.commissionRate) || 0)) / 100
+                  : Number(form.commissionAmount) || 0)}</b>
+                {form.commissionType === 'percent' && <span className="muted"> ({form.commissionRate || 0}% of taxable ₹ {formatINR(totals.subTotal)})</span>}
+              </div>
+            </>
+          )}
+          {agents.length === 0 && form.commissionEnabled && (
+            <div className="hint">No agents registered yet — add them in <b>Accounts → Agents</b> first.</div>
+          )}
+        </div>
       </div>
 
       {/* ── Totals ── */}

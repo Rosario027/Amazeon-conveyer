@@ -12,6 +12,7 @@ import customerRoutes from './routes/customers.js';
 import invoiceRoutes from './routes/invoices.js';
 import purchaseRoutes from './routes/purchases.js';
 import accountRoutes from './routes/accounts.js';
+import agentRoutes from './routes/agents.js';
 import reportRoutes from './routes/reports.js';
 import dashboardRoutes from './routes/dashboard.js';
 
@@ -31,6 +32,7 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/purchases', purchaseRoutes);
 app.use('/api/accounts', accountRoutes);
+app.use('/api/agents', agentRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 

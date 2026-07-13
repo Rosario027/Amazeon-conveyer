@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
 import { api, getStoredUser, getToken, clearAuth } from './api.js';
-import { LogoMark, Wordmark } from './logo.jsx';
+import { Logo } from './logo.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import InvoiceEditor from './pages/InvoiceEditor.jsx';
@@ -31,8 +31,7 @@ function Sidebar({ open, onNavigate }) {
   return (
     <aside className={`sidebar ${open ? 'open' : ''}`}>
       <div className="brand">
-        <span className="brand-mark"><LogoMark size={34} /></span>
-        <Wordmark compact />
+        <Logo variant="light" height={54} />
       </div>
       <nav onClick={onNavigate}>
         <div className="nav-group">Invoicing</div>
@@ -56,6 +55,11 @@ function Sidebar({ open, onNavigate }) {
 export default function App() {
   const [user, setUser] = useState(getStoredUser());
   const [menuOpen, setMenuOpen] = useState(false);
+  // View mode: the app is phone-first — a small toggle in the topbar
+  // switches between Mobile and Desktop layouts (persisted per device).
+  const [viewMode, setViewMode] = useState(
+    () => localStorage.getItem('amz_view') || (window.innerWidth < 860 ? 'mobile' : 'desktop'),
+  );
   const navigate = useNavigate();
 
   // Validate stored token on load; a dead token drops back to login.
@@ -63,6 +67,16 @@ export default function App() {
     if (!getToken()) return;
     api.me().then((r) => setUser(r.user)).catch(() => { clearAuth(); setUser(null); });
   }, []);
+
+  // Persist the choice and drive the viewport meta so "Desktop" on a
+  // phone behaves like the browser's Desktop-site mode (zoomed-out page).
+  useEffect(() => {
+    localStorage.setItem('amz_view', viewMode);
+    const meta = document.querySelector('meta[name="viewport"]');
+    if (meta) {
+      meta.setAttribute('content', viewMode === 'desktop' ? 'width=1160' : 'width=device-width, initial-scale=1.0');
+    }
+  }, [viewMode]);
 
   if (!user) return <Login onLogin={setUser} />;
 
@@ -72,8 +86,10 @@ export default function App() {
     navigate('/');
   };
 
+  const isMobile = viewMode === 'mobile';
+
   return (
-    <div className="app-root">
+    <div className={`app-root ${isMobile ? 'is-mobile' : 'is-desktop'}`}>
       <Sidebar open={menuOpen} onNavigate={() => setMenuOpen(false)} />
       {menuOpen && <div className="sidebar-backdrop" onClick={() => setMenuOpen(false)} />}
       <div className="main-col">
@@ -81,6 +97,14 @@ export default function App() {
           <button className="hamburger" onClick={() => setMenuOpen((v) => !v)} aria-label="Menu">☰</button>
           <div className="topbar-title">Amazeon Shopping · ERP</div>
           <div className="topbar-right">
+            <button
+              className="view-toggle"
+              onClick={() => setViewMode(isMobile ? 'desktop' : 'mobile')}
+              title={isMobile ? 'Switch to Desktop view' : 'Switch to Mobile view'}
+            >
+              {isMobile ? '🖥️' : '📱'}
+              <span className="view-toggle-label">{isMobile ? 'Desktop' : 'Mobile'}</span>
+            </button>
             <span className="user-chip">👤 {user.username}</span>
             <button className="btn-logout" onClick={logout}>Logout</button>
           </div>

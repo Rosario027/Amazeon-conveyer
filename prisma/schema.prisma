@@ -71,6 +71,23 @@ model Customer {
   invoices  Invoice[]
 }
 
+// ── Referral / commission agents ────────────────────────────────
+// Registered from the Accounts module. Name, phone and PAN are
+// mandatory; the rest is optional. Commissions on invoices reference
+// an agent and are INTERNAL ONLY — never printed on the invoice.
+model Agent {
+  id          Int       @id @default(autoincrement())
+  name        String
+  phone       String
+  pan         String
+  email       String    @default("")
+  bankAccount String    @default("")
+  remarks     String    @default("") @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  invoices    Invoice[]
+}
+
 // ── Invoices ────────────────────────────────────────────────────
 model Invoice {
   id             Int       @id @default(autoincrement())
@@ -102,6 +119,16 @@ model Invoice {
   igstAmount     Float     @default(0)
   roundOff       Float     @default(0)
   grandTotal     Float     @default(0)
+  // Referral commission — internal reference only, never printed.
+  // percent → commissionRate % of the taxable value (subTotal);
+  // amount  → fixed commissionAmount. Both stored resolved in
+  // commissionAmount for the accounts ledger.
+  commissionEnabled Boolean @default(false)
+  agentId           Int?
+  agent             Agent?  @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  commissionType    String  @default("percent") // percent | amount
+  commissionRate    Float   @default(0)
+  commissionAmount  Float   @default(0)
   createdBy      String    @default("")
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -151,6 +178,8 @@ model AccountEntry {
   id          Int      @id @default(autoincrement())
   entryDate   DateTime @default(now())
   kind        String   @default("out") // in | out
+  entryType   String   @default("regular") // regular | advance
+  partyName   String   @default("") // who the advance was received from / paid to
   category    String   @default("General")
   description String   @default("") @db.Text
   mode        String   @default("Cash") // Cash | Bank | UPI | Card | Other

@@ -59,6 +59,31 @@ function buyerFields(body, settings) {
   };
 }
 
+const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+// Referral commission — INTERNAL ONLY (never printed on the invoice).
+// percent → rate % of the taxable value; amount → fixed amount.
+// Resolved commissionAmount is stored for the accounts ledger.
+async function commissionFields(tx, body, subTotal) {
+  if (!body.commissionEnabled) {
+    return { commissionEnabled: false, agentId: null, commissionType: 'percent', commissionRate: 0, commissionAmount: 0 };
+  }
+  const agentId = Number(body.agentId) || 0;
+  const agent = agentId ? await tx.agent.findUnique({ where: { id: agentId } }) : null;
+  if (!agent) throw Object.assign(new Error('Select a registered agent for the referral commission (register agents in Accounts → Agents).'), { status: 400 });
+  const type = body.commissionType === 'amount' ? 'amount' : 'percent';
+  let rate = 0, amount = 0;
+  if (type === 'percent') {
+    rate = Number(body.commissionRate) || 0;
+    if (rate <= 0 || rate > 100) throw Object.assign(new Error('Commission percentage must be between 0 and 100.'), { status: 400 });
+    amount = r2((subTotal * rate) / 100);
+  } else {
+    amount = r2(body.commissionAmount);
+    if (amount <= 0) throw Object.assign(new Error('Commission amount must be greater than zero.'), { status: 400 });
+  }
+  return { commissionEnabled: true, agentId: agent.id, commissionType: type, commissionRate: rate, commissionAmount: amount };
+}
+
 // Find-or-create the customer record so future invoices can autofill.
 async function resolveCustomerId(tx, fields) {
   if (!fields.buyerName) return null;
@@ -165,11 +190,13 @@ router.post('/', async (req, res, next) => {
       }
 
       const customerId = await resolveCustomerId(tx, fields);
+      const commission = await commissionFields(tx, body, totals.subTotal);
       const invoice = await tx.invoice.create({
         data: {
           invoiceNo,
           invoiceDate,
           ...fields,
+          ...commission,
           customerId,
           subTotal: totals.subTotal,
           cgstAmount: totals.cgstAmount,
@@ -201,7 +228,10 @@ router.get('/:id', async (req, res, next) => {
   try {
     const invoice = await prisma.invoice.findUnique({
       where: { id: Number(req.params.id) },
-      include: { items: { orderBy: { slNo: 'asc' } } },
+      include: {
+        items: { orderBy: { slNo: 'asc' } },
+        agent: { select: { id: true, name: true, pan: true } },
+      },
     });
     if (!invoice) return res.status(404).json({ error: 'Invoice not found.' });
     res.json(invoice);
@@ -235,6 +265,7 @@ router.put('/:id', async (req, res, next) => {
         if (clash) throw Object.assign(new Error(`Invoice number ${invoiceNo} already exists.`), { status: 400 });
       }
       const customerId = await resolveCustomerId(tx, fields);
+      const commission = await commissionFields(tx, body, totals.subTotal);
       await tx.invoiceItem.deleteMany({ where: { invoiceId: id } });
       return tx.invoice.update({
         where: { id },
@@ -242,6 +273,7 @@ router.put('/:id', async (req, res, next) => {
           invoiceNo,
           invoiceDate: body.invoiceDate ? new Date(body.invoiceDate) : existing.invoiceDate,
           ...fields,
+          ...commission,
           customerId,
           subTotal: totals.subTotal,
           cgstAmount: totals.cgstAmount,
