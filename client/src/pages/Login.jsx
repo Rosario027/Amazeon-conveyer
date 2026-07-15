@@ -27,7 +27,7 @@ export default function Login({ onLogin }) {
     <div className="login-wrap">
       <div className="login-card">
         <div className="login-brand">
-          <Logo height={96} />
+          <Logo />
         </div>
         <h1>Sign in</h1>
         <p className="login-sub">ERP — Invoicing · Purchases · GST Reports</p>

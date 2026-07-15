@@ -27,9 +27,7 @@
 }
 
 .inv-head { display: flex; gap: 14px; align-items: flex-start; }
-.inv-logo img { max-height: 58px; max-width: 120px; object-fit: contain; }
-.inv-logomark { color: #1e5aa8; display: block; }
-.inv-logomark .lg-belt { color: #1e5aa8; }
+.inv-logo img { max-height: 64px; max-width: 190px; object-fit: contain; }
 .inv-co { flex: 1; }
 .inv-co-name { font-size: 20px; font-weight: 800; color: #1e5aa8; }
 .inv-co-tag { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: #ef8722; margin: 1px 0 4px; }

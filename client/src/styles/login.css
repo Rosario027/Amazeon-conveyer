@@ -21,7 +21,7 @@
   max-width: 400px;
 }
 .login-brand { display: flex; justify-content: center; margin-bottom: 18px; }
-.login-brand svg { max-width: 100%; height: auto; }
+.login-brand .amz-logo { max-width: 280px; width: 100%; height: auto; }
 
 .login-card h1 { font-size: 19px; margin: 4px 0 2px; text-align: center; }
 .login-sub { text-align: center; color: #68758a; font-size: 13px; margin: 0 0 18px; }

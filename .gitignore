@@ -11,3 +11,7 @@ dist/
 # Local-only test artifacts (embedded Postgres, smoke scripts, render output)
 /_*
 _pgdata/
+
+# Staging drop-folder for source assets — the committed copy lives in
+# client/public/amazeon-logo.jpg
+client/logo image/

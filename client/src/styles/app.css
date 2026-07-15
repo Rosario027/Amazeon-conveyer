@@ -49,7 +49,15 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   padding: 14px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
-.brand svg { max-width: 100%; height: auto; }
+/* The logo image carries its own light background — a white plate keeps
+   it legible on the dark sidebar without touching the artwork itself. */
+.brand-plate {
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  max-width: 100%;
+}
+.amz-logo { display: block; max-width: 100%; height: auto; }
 
 .sidebar nav { padding: 10px 8px; flex: 1; }
 .nav-group {

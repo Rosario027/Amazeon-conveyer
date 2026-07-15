@@ -3,7 +3,7 @@
 import React from 'react';
 import { computeTotals } from '../utils/calc.js';
 import { formatINR, formatRate } from '../utils/money.js';
-import { LogoMark } from '../logo.jsx';
+import { LOGO_SRC } from '../logo.jsx';
 
 const fmtDate = (d) => {
   const dt = new Date(d);
@@ -31,9 +31,7 @@ export default function InvoicePreview({ invoice, settings }) {
 
       <header className="inv-head">
         <div className="inv-logo">
-          {settings.logoDataUrl
-            ? <img src={settings.logoDataUrl} alt="logo" />
-            : <span className="inv-logomark"><LogoMark size={56} /></span>}
+          <img src={settings.logoDataUrl || LOGO_SRC} alt="logo" />
         </div>
         <div className="inv-co">
           <div className="inv-co-name">{settings.companyName}</div>

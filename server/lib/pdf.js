@@ -3,9 +3,21 @@
 // supplier block + GSTIN, serial no & date, buyer + GSTIN (B2B), place of
 // supply, reverse-charge flag, HSN/part columns, rate-wise CGST/SGST or
 // IGST breakup, amount in words, payment settings + boilerplate footer.
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import PdfPrinter from 'pdfmake/src/printer.js';
 import { computeTotals } from './calc.js';
 import { formatINR, formatRate } from './money.js';
+
+// The one real company logo file — read once at boot, embedded as a data
+// URL so pdfmake can print it. Used as the default whenever no custom
+// logo has been uploaded in Invoice Settings. Never redrawn.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const LOGO_PATH = path.join(__dirname, '..', '..', 'client', 'public', 'amazeon-logo.png');
+const DEFAULT_LOGO_DATA_URL = fs.existsSync(LOGO_PATH)
+  ? `data:image/png;base64,${fs.readFileSync(LOGO_PATH).toString('base64')}`
+  : null;
 
 const FONTS = {
   Helvetica: {
@@ -41,25 +53,10 @@ function fmtDate(d) {
   return `${dd}.${mm}.${dt.getFullYear()}`;
 }
 
-// Built-in conveyor logomark used when no logo is uploaded in settings.
-const LOGO_MARK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
-<g fill="none" stroke="#1e5aa8" stroke-width="7" stroke-linecap="round">
-<path d="M18 78 H102"/><path d="M24 96 H96"/>
-</g>
-<circle cx="30" cy="87" r="8" fill="none" stroke="#1e5aa8" stroke-width="5"/>
-<circle cx="60" cy="87" r="8" fill="none" stroke="#1e5aa8" stroke-width="5"/>
-<circle cx="90" cy="87" r="8" fill="none" stroke="#1e5aa8" stroke-width="5"/>
-<rect x="30" y="52" width="24" height="20" rx="3" fill="#ef8722"/>
-<rect x="62" y="56" width="18" height="16" rx="3" fill="#1e5aa8"/>
-<path d="M34 44 C46 18 78 14 96 30" fill="none" stroke="#ef8722" stroke-width="8" stroke-linecap="round"/>
-<path d="M88 16 L100 32 L80 36 Z" fill="#ef8722"/>
-</svg>`;
-
 function logoNode(settings) {
-  if (settings.logoDataUrl && settings.logoDataUrl.startsWith('data:image')) {
-    return { image: settings.logoDataUrl, fit: [110, 56] };
-  }
-  return { svg: LOGO_MARK_SVG, width: 52, height: 52 };
+  const src = (settings.logoDataUrl && settings.logoDataUrl.startsWith('data:image')) ? settings.logoDataUrl : DEFAULT_LOGO_DATA_URL;
+  if (!src) return { text: '' };
+  return { image: src, fit: [160, 60] };
 }
 
 function partyBlock(title, lines) {

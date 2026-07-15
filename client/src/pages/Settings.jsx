@@ -3,6 +3,7 @@
 // boilerplate lines that appear at the bottom of the invoice.
 import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import { LOGO_SRC } from '../logo.jsx';
 import { STATES } from '../utils/states.js';
 
 function fileToDataUrl(file, maxBytes = 2 * 1024 * 1024) {
@@ -101,7 +102,7 @@ export default function Settings() {
         <div className="brand-row">
           <div className="brand-slot">
             <div className="brand-slot-label">Logo (shown on invoices)</div>
-            {s.logoDataUrl ? <img className="brand-img" src={s.logoDataUrl} alt="logo" /> : <div className="brand-empty">Built-in conveyor mark</div>}
+            {s.logoDataUrl ? <img className="brand-img" src={s.logoDataUrl} alt="logo" /> : <img className="brand-img" src={LOGO_SRC} alt="company logo (default)" />}
             <div className="brand-btns">
               <label className="btn btn-ghost file-btn">Upload<input type="file" accept="image/*" onChange={(e) => pickImage(e, 'logoDataUrl')} hidden /></label>
               {s.logoDataUrl && <button className="btn btn-ghost" onClick={() => set({ logoDataUrl: null })}>Remove</button>}

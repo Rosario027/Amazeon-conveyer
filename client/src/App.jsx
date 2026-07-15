@@ -31,7 +31,7 @@ function Sidebar({ open, onNavigate }) {
   return (
     <aside className={`sidebar ${open ? 'open' : ''}`}>
       <div className="brand">
-        <Logo variant="light" height={54} />
+        <div className="brand-plate"><Logo /></div>
       </div>
       <nav onClick={onNavigate}>
         <div className="nav-group">Invoicing</div>
