@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { computeTotals } from '../utils/calc.js';
 import { formatINR, formatRate } from '../utils/money.js';
@@ -26,6 +26,7 @@ const emptyForm = (settings) => ({
   paymentTerms: '',
   notes: '',
   items: [emptyItem()],
+  projectId: '',
   // referral commission — internal only, never printed on the invoice
   commissionEnabled: false,
   agentId: '',
@@ -37,11 +38,13 @@ const emptyForm = (settings) => ({
 export default function InvoiceEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const editing = !!id;
 
   const [settings, setSettings] = useState(null);
   const [form, setForm] = useState(null);
   const [agents, setAgents] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [nextNo, setNextNo] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -56,18 +59,21 @@ export default function InvoiceEditor() {
       const s = await api.settings();
       setSettings(s);
       api.agents().then(setAgents).catch(() => {});
+      api.projects().then(setProjects).catch(() => {});
       if (editing) {
         const inv = await api.invoice(id);
         setForm({
           ...inv,
           invoiceDate: localISO(new Date(inv.invoiceDate)),
           items: inv.items.map((it) => ({ ...it })),
+          projectId: inv.projectId || '',
           agentId: inv.agentId || '',
           commissionRate: inv.commissionRate || '',
           commissionAmount: inv.commissionAmount || '',
         });
       } else {
-        setForm(emptyForm(s));
+        const preselect = Number(searchParams.get('project')) || '';
+        setForm({ ...emptyForm(s), projectId: preselect });
         api.nextInvoiceNo().then((r) => setNextNo(r.invoiceNo)).catch(() => {});
       }
     })().catch((e) => setError(e.message));
@@ -172,6 +178,12 @@ export default function InvoiceEditor() {
         <div className="card">
           <h2>Invoice Details</h2>
           <div className="form-grid">
+            <label className="span2">Project
+              <select value={form.projectId} onChange={(e) => set({ projectId: e.target.value })}>
+                <option value="">— no project —</option>
+                {projects.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
+              </select>
+            </label>
             <label>Invoice No
               <input value={form.invoiceNo} onChange={(e) => set({ invoiceNo: e.target.value })} placeholder={editing ? '' : `auto: ${nextNo || '…'}`} />
             </label>

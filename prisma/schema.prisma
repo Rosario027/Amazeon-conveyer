@@ -69,6 +69,54 @@ model Customer {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   invoices  Invoice[]
+  projects  Project[]
+}
+
+// ── Projects — every invoice/payment/expense hangs off a project ──
+// The project carries the supplier commitment (total payable) and all
+// money movement; balances and P&L are computed server-side from the
+// linked invoices + payments.
+model Project {
+  id              Int              @id @default(autoincrement())
+  code            String           @unique @default("") // PRJ-0001, set post-create
+  name            String
+  status          String           @default("active") // active | completed
+  customerName    String           @default("")
+  customerId      Int?
+  customer        Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  supplierName    String           @default("")
+  supplierPayable Float            @default(0) // total committed to supplier
+  notes           String           @default("") @db.Text
+  createdBy       String           @default("")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  invoices        Invoice[]
+  payments        ProjectPayment[]
+}
+
+// Every money movement inside a project:
+//   supplier-payment  (out)  advance / against payable — auto-updates balance
+//   customer-payment  (in)   receipt tranche — auto-updates receivable
+//   expense           (out)  chargeTo 'company' (project cost) or
+//                            'customer' (billable — adds to receivable)
+//   consultant        (out)  referral / consultant payout (optional agent link)
+model ProjectPayment {
+  id          Int      @id @default(autoincrement())
+  projectId   Int
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type        String
+  chargeTo    String   @default("") // expenses only: company | customer
+  payDate     DateTime @default(now())
+  amount      Float    @default(0)
+  mode        String   @default("Bank") // Cash | Bank | UPI | Card | Other
+  refNo       String   @default("")
+  description String   @default("") @db.Text
+  partyName   String   @default("") // payee / payer name
+  agentId     Int?
+  agent       Agent?   @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  createdBy   String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // ── Referral / commission agents ────────────────────────────────
@@ -86,6 +134,7 @@ model Agent {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   invoices    Invoice[]
+  projectPayments ProjectPayment[]
 }
 
 // ── Invoices ────────────────────────────────────────────────────
@@ -96,6 +145,8 @@ model Invoice {
   invoiceType    String    @default("B2B") // B2B | B2C
   status         String    @default("active") // active | cancelled
   reverseCharge  Boolean   @default(false)
+  projectId      Int?
+  project        Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
   customerId     Int?
   customer       Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   // Buyer snapshot (frozen at invoice time, independent of customer edits)

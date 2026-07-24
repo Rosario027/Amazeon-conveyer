@@ -93,6 +93,16 @@ export const api = {
   addPurchaseFiles: (id, files) => request(`/api/purchases/${id}/files`, { method: 'POST', body: JSON.stringify({ files }) }),
   downloadPurchaseFile: (purchaseId, fileId, name) => download(`/api/purchases/${purchaseId}/files/${fileId}`, name || 'document'),
   deletePurchaseFile: (purchaseId, fileId) => request(`/api/purchases/${purchaseId}/files/${fileId}`, { method: 'DELETE' }),
+  // projects
+  projects: (filters) => request(`/api/projects${qs(filters)}`),
+  project: (id) => request(`/api/projects/${id}`),
+  createProject: (data) => request('/api/projects', { method: 'POST', body: JSON.stringify(data) }),
+  updateProject: (id, data) => request(`/api/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteProject: (id) => request(`/api/projects/${id}`, { method: 'DELETE' }),
+  addProjectPayment: (id, data) => request(`/api/projects/${id}/payments`, { method: 'POST', body: JSON.stringify(data) }),
+  updateProjectPayment: (id, pid, data) => request(`/api/projects/${id}/payments/${pid}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteProjectPayment: (id, pid) => request(`/api/projects/${id}/payments/${pid}`, { method: 'DELETE' }),
+  paymentsFeed: (filters) => request(`/api/projects/payments-feed${qs(filters)}`),
   // accounts (inflow/outflow ledger)
   ledger: (from, to) => request(`/api/accounts/ledger${qs({ from, to })}`),
   createEntry: (data) => request('/api/accounts', { method: 'POST', body: JSON.stringify(data) }),

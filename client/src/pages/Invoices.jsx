@@ -65,7 +65,11 @@ export default function Invoices() {
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} className={r.status === 'cancelled' ? 'row-cancelled' : ''} onClick={() => navigate(`/invoices/${r.id}`)}>
-                <td><b>{r.invoiceNo}</b>{r.status === 'cancelled' && <span className="badge badge-red">CANCELLED</span>}</td>
+                <td>
+                  <b>{r.invoiceNo}</b>
+                  {r.status === 'cancelled' && <span className="badge badge-red">CANCELLED</span>}
+                  {r.project && <div className="muted tiny">📁 {r.project.code} · {r.project.name}</div>}
+                </td>
                 <td>{d10(r.invoiceDate)}</td>
                 <td><span className={`badge ${r.invoiceType === 'B2B' ? 'badge-blue' : 'badge-orange'}`}>{r.invoiceType}</span></td>
                 <td>{r.buyerName}</td>

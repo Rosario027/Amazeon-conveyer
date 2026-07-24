@@ -47,6 +47,13 @@ export default function Dashboard() {
           <div className="kpi-value">₹ {formatINR(data.purchases.total)}</div>
           <div className="kpi-sub">{data.purchases.count} entr{data.purchases.count === 1 ? 'y' : 'ies'} recorded</div>
         </div>
+        {data.projects && (
+          <div className="kpi kpi-purple kpi-link" onClick={() => navigate('/projects')}>
+            <div className="kpi-label">Projects receivable</div>
+            <div className="kpi-value">₹ {formatINR(data.projects.receivable)}</div>
+            <div className="kpi-sub">{data.projects.active} active project{data.projects.active === 1 ? '' : 's'} — view all →</div>
+          </div>
+        )}
       </div>
 
       <div className="card table-card">

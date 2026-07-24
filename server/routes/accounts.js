@@ -47,7 +47,7 @@ function entryData(body, username) {
 // commissions (out, derived from invoices) into one ledger.
 async function buildLedger(from, to) {
   const dateWhere = { gte: new Date(from), lte: new Date(`${to}T23:59:59`) };
-  const [manual, invoices, purchases] = await Promise.all([
+  const [manual, invoices, purchases, projectOutflows] = await Promise.all([
     prisma.accountEntry.findMany({ where: { entryDate: dateWhere }, orderBy: { entryDate: 'desc' } }),
     prisma.invoice.findMany({
       where: { status: 'active', invoiceDate: dateWhere },
@@ -61,6 +61,13 @@ async function buildLedger(from, to) {
     prisma.purchase.findMany({
       where: { purchaseDate: dateWhere },
       select: { id: true, purchaseDate: true, vendorName: true, billNo: true, totalAmount: true },
+    }),
+    // Project money-out (supplier payments, expenses, consultant payouts).
+    // Customer receipts are intentionally EXCLUDED — the linked invoices
+    // already represent that revenue in this ledger.
+    prisma.projectPayment.findMany({
+      where: { payDate: dateWhere, type: { not: 'customer-payment' } },
+      include: { project: { select: { name: true, code: true } } },
     }),
   ]);
 
@@ -90,6 +97,15 @@ async function buildLedger(from, to) {
       category: 'Commission',
       description: `Referral commission — ${i.agent?.name || '(agent removed)'} on ${i.invoiceNo}${i.commissionType === 'percent' ? ` (${i.commissionRate}% of taxable ₹${i.subTotal})` : ' (fixed)'}`,
       mode: '', refNo: i.invoiceNo, amount: r2(i.commissionAmount),
+    })),
+    ...projectOutflows.map((p) => ({
+      source: 'project', sourceId: p.id, date: p.payDate, kind: 'out',
+      entryType: '', partyName: p.partyName,
+      category: p.type === 'supplier-payment' ? 'Supplier Payment'
+        : p.type === 'consultant' ? 'Consultant'
+        : p.chargeTo === 'customer' ? 'Project Expense (billable)' : 'Project Expense',
+      description: `${p.description || p.type} — ${p.project?.name || 'project'} (${p.project?.code || ''})`,
+      mode: p.mode, refNo: p.refNo, amount: r2(p.amount),
     })),
   ].sort((a, b) => new Date(b.date) - new Date(a.date));
 

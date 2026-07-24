@@ -61,6 +61,16 @@ function buyerFields(body, settings) {
 
 const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
+// Optional project link — a linked invoice feeds the project's
+// receivable and P&L automatically.
+async function resolveProjectId(tx, body) {
+  const projectId = Number(body.projectId) || 0;
+  if (!projectId) return null;
+  const project = await tx.project.findUnique({ where: { id: projectId } });
+  if (!project) throw Object.assign(new Error('Selected project no longer exists.'), { status: 400 });
+  return project.id;
+}
+
 // Referral commission — INTERNAL ONLY (never printed on the invoice).
 // percent → rate % of the taxable value; amount → fixed amount.
 // Resolved commissionAmount is stored for the accounts ledger.
@@ -140,6 +150,7 @@ router.get('/', async (req, res, next) => {
         id: true, invoiceNo: true, invoiceDate: true, invoiceType: true, status: true,
         buyerName: true, buyerGstin: true, taxMode: true,
         subTotal: true, cgstAmount: true, sgstAmount: true, igstAmount: true, grandTotal: true,
+        project: { select: { id: true, name: true, code: true } },
       },
     });
     res.json(invoices);
@@ -191,12 +202,14 @@ router.post('/', async (req, res, next) => {
 
       const customerId = await resolveCustomerId(tx, fields);
       const commission = await commissionFields(tx, body, totals.subTotal);
+      const projectId = await resolveProjectId(tx, body);
       const invoice = await tx.invoice.create({
         data: {
           invoiceNo,
           invoiceDate,
           ...fields,
           ...commission,
+          projectId,
           customerId,
           subTotal: totals.subTotal,
           cgstAmount: totals.cgstAmount,
@@ -231,6 +244,7 @@ router.get('/:id', async (req, res, next) => {
       include: {
         items: { orderBy: { slNo: 'asc' } },
         agent: { select: { id: true, name: true, pan: true } },
+        project: { select: { id: true, name: true, code: true } },
       },
     });
     if (!invoice) return res.status(404).json({ error: 'Invoice not found.' });
@@ -266,6 +280,7 @@ router.put('/:id', async (req, res, next) => {
       }
       const customerId = await resolveCustomerId(tx, fields);
       const commission = await commissionFields(tx, body, totals.subTotal);
+      const projectId = await resolveProjectId(tx, body);
       await tx.invoiceItem.deleteMany({ where: { invoiceId: id } });
       return tx.invoice.update({
         where: { id },
@@ -274,6 +289,7 @@ router.put('/:id', async (req, res, next) => {
           invoiceDate: body.invoiceDate ? new Date(body.invoiceDate) : existing.invoiceDate,
           ...fields,
           ...commission,
+          projectId,
           customerId,
           subTotal: totals.subTotal,
           cgstAmount: totals.cgstAmount,

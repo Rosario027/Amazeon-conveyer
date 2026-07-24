@@ -39,6 +39,11 @@ export default function InvoiceView() {
         <h1>Invoice {invoice.invoiceNo}
           {invoice.status === 'cancelled' && <span className="badge badge-red">CANCELLED</span>}
           <span className={`badge ${invoice.invoiceType === 'B2B' ? 'badge-blue' : 'badge-orange'}`}>{invoice.invoiceType}</span>
+          {invoice.project && (
+            <button className="proj-tag" onClick={() => navigate(`/projects/${invoice.project.id}`)}>
+              📁 {invoice.project.code} · {invoice.project.name}
+            </button>
+          )}
         </h1>
         <div className="page-actions">
           <button className="btn" onClick={() => navigate('/invoices')}>← All invoices</button>
