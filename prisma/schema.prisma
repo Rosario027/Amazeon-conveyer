@@ -51,6 +51,10 @@ model CompanySettings {
   signatory        String   @default("Authorised Signatory")
   logoDataUrl      String?  @db.Text
   signatureDataUrl String?  @db.Text
+  // The two company owners — every project's P&L is split between them
+  // (per-project percentage, default 50/50).
+  owner1Name       String   @default("Owner 1")
+  owner2Name       String   @default("Owner 2")
   updatedAt        DateTime @updatedAt
 }
 
@@ -86,6 +90,7 @@ model Project {
   customer        Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
   supplierName    String           @default("")
   supplierPayable Float            @default(0) // total committed to supplier
+  owner1Share     Float            @default(50) // % of P&L to owner 1 (owner 2 gets the rest)
   notes           String           @default("") @db.Text
   createdBy       String           @default("")
   createdAt       DateTime         @default(now())

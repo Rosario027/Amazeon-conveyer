@@ -101,6 +101,7 @@ export default function ProjectDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [proj, setProj] = useState(null);
+  const [settings, setSettings] = useState(null);
   const [agents, setAgents] = useState([]);
   const [tab, setTab] = useState('overview');
   const [addType, setAddType] = useState(''); // which tab's add-form is open
@@ -110,12 +111,18 @@ export default function ProjectDetail() {
   const [busy, setBusy] = useState(false);
 
   const load = () => api.project(id).then(setProj).catch((e) => setError(e.message));
-  useEffect(() => { load(); api.agents().then(setAgents).catch(() => {}); }, [id]);
+  useEffect(() => {
+    load();
+    api.agents().then(setAgents).catch(() => {});
+    api.settings().then(setSettings).catch(() => {});
+  }, [id]);
 
   if (error && !proj) return <div className="page"><div className="alert error">{error}</div></div>;
   if (!proj) return <div className="page"><div className="muted">Loading…</div></div>;
 
   const s = proj.summary;
+  const o1 = settings?.owner1Name || 'Owner 1';
+  const o2 = settings?.owner2Name || 'Owner 2';
   const pays = (type) => proj.payments.filter((p) => p.type === type);
   const expenses = pays('expense');
 
@@ -196,7 +203,7 @@ export default function ProjectDetail() {
         </h1>
         <div className="page-actions">
           <button className="btn" onClick={() => navigate('/projects')}>← Projects</button>
-          <button className="btn" onClick={() => setEditProj(editProj ? null : { name: proj.name, customerName: proj.customerName, supplierName: proj.supplierName, supplierPayable: proj.supplierPayable, notes: proj.notes })}>Edit</button>
+          <button className="btn" onClick={() => setEditProj(editProj ? null : { name: proj.name, customerName: proj.customerName, supplierName: proj.supplierName, supplierPayable: proj.supplierPayable, owner1Share: proj.owner1Share, notes: proj.notes })}>Edit</button>
           <button className="btn" onClick={toggleStatus}>{proj.status === 'active' ? 'Mark Completed' : 'Reopen'}</button>
           <button className="btn btn-primary" onClick={() => navigate(`/invoices/new?project=${proj.id}`)}>+ Raise Invoice</button>
         </div>
@@ -211,6 +218,10 @@ export default function ProjectDetail() {
             <label>Customer<input value={editProj.customerName} onChange={(e) => setEditProj({ ...editProj, customerName: e.target.value })} /></label>
             <label>Supplier<input value={editProj.supplierName} onChange={(e) => setEditProj({ ...editProj, supplierName: e.target.value })} /></label>
             <label>Total payable to supplier (₹)<input type="number" min="0" step="any" value={editProj.supplierPayable} onChange={(e) => setEditProj({ ...editProj, supplierPayable: e.target.value })} /></label>
+            <label>{o1}'s share of P&amp;L (%)
+              <input type="number" min="0" max="100" step="any" value={editProj.owner1Share} onChange={(e) => setEditProj({ ...editProj, owner1Share: e.target.value })} />
+            </label>
+            <div className="hint">Split for this project: <b>{o1} {Number(editProj.owner1Share) || 0}%</b> · <b>{o2} {Math.round((100 - (Number(editProj.owner1Share) || 0)) * 100) / 100}%</b> — applies to profit and loss alike.</div>
             <label className="span2">Notes<input value={editProj.notes} onChange={(e) => setEditProj({ ...editProj, notes: e.target.value })} /></label>
           </div>
           <div className="page-actions" style={{ marginTop: 12 }}>
@@ -223,9 +234,9 @@ export default function ProjectDetail() {
 
       <div className="kpi-grid">
         <div className={`kpi ${s.pnl < 0 ? 'kpi-red' : 'kpi-green'}`}>
-          <div className="kpi-label">Project P&amp;L</div>
+          <div className="kpi-label">Project P&amp;L <span className="badge badge-amber">split {s.owner1Share}／{s.owner2Share}</span></div>
           <div className="kpi-value" style={{ color: s.pnl < 0 ? 'var(--red)' : 'var(--green)' }}>{money(s.pnl)}</div>
-          <div className="kpi-sub">income {money(s.income)} · costs {money(s.costs)}</div>
+          <div className="kpi-sub">{o1} {money(s.pnlOwner1)} · {o2} {money(s.pnlOwner2)}</div>
         </div>
         <div className="kpi kpi-orange">
           <div className="kpi-label">Amount receivable</div>
@@ -266,6 +277,8 @@ export default function ProjectDetail() {
               <tr><td>Consultant payouts</td><td className="r">− {money(s.consultantPaid)}</td></tr>
               <tr><td>Invoice referral commissions</td><td className="r">− {money(s.invoiceCommissions)}</td></tr>
               <tr className="grand"><td>Project P&amp;L</td><td className="r" style={{ color: s.pnl < 0 ? 'var(--red)' : 'var(--green)' }}>{money(s.pnl)}</td></tr>
+              <tr><td>{o1}'s share ({s.owner1Share}%)</td><td className="r" style={{ color: s.pnlOwner1 < 0 ? 'var(--red)' : 'var(--green)' }}>{money(s.pnlOwner1)}</td></tr>
+              <tr><td>{o2}'s share ({s.owner2Share}%)</td><td className="r" style={{ color: s.pnlOwner2 < 0 ? 'var(--red)' : 'var(--green)' }}>{money(s.pnlOwner2)}</td></tr>
             </tbody></table>
             {proj.notes && <div className="hint" style={{ marginTop: 10 }}>📝 {proj.notes}</div>}
           </div>

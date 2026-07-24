@@ -98,6 +98,15 @@ export default function Settings() {
       </div>
 
       <div className="card">
+        <h2>Owners <span className="muted h-sub">used by Projects &amp; Profit Share for the P&amp;L split</span></h2>
+        <div className="form-grid">
+          <label>Owner 1 name<input value={s.owner1Name || ''} onChange={(e) => set({ owner1Name: e.target.value })} placeholder="e.g. Akash" /></label>
+          <label>Owner 2 name<input value={s.owner2Name || ''} onChange={(e) => set({ owner2Name: e.target.value })} placeholder="e.g. Partner" /></label>
+          <div className="hint span2">Each project carries its own share % (default 50／50) — change it on the project page under <b>Edit</b>.</div>
+        </div>
+      </div>
+
+      <div className="card">
         <h2>Branding</h2>
         <div className="brand-row">
           <div className="brand-slot">

@@ -421,9 +421,10 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .kpi-slate { border-top-color: #64748b; }
 .kpi-red { border-top-color: var(--red); }
 .kpi-purple { border-top-color: #6941c6; }
-.kpi-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted); font-weight: 700; }
-.kpi-value { font-size: 24px; font-weight: 700; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
-.kpi-sub { font-size: 12.5px; color: var(--muted); }
+.kpi-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted); font-weight: 700; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.kpi-label .badge { text-transform: none; letter-spacing: 0; margin-left: 0; }
+.kpi-value { font-size: 22px; font-weight: 700; margin: 6px 0 2px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.kpi-sub { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
 
 .mini-stats { display: flex; gap: 22px; flex-wrap: wrap; font-size: 13.5px; color: var(--muted); margin: 0 4px 14px; }
 
@@ -455,20 +456,28 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .brand-empty { color: var(--muted); font-size: 13px; padding: 20px 0; }
 .brand-btns { display: flex; gap: 8px; justify-content: center; }
 
-/* ── Tabs (Accounts) ── */
-.tabs { display: flex; gap: 6px; margin-bottom: 16px; border-bottom: 2px solid var(--line); }
+/* ── Tabs — segmented pills (Accounts, Project detail) ── */
+.tabs {
+  display: inline-flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  background: #e9eef5;
+  border-radius: 12px;
+  padding: 4px;
+  max-width: 100%;
+}
 .tab {
   border: none;
-  background: none;
-  padding: 9px 18px;
-  font-size: 14px;
+  background: transparent;
+  padding: 8px 16px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--muted);
-  border-bottom: 3px solid transparent;
-  margin-bottom: -2px;
+  border-radius: 9px;
+  transition: background 0.12s, color 0.12s;
 }
 .tab:hover { color: var(--blue); }
-.tab.sel { color: var(--orange-dark); border-bottom-color: var(--orange); }
+.tab.sel { background: #fff; color: var(--orange-dark); box-shadow: 0 1px 3px rgba(20, 40, 80, 0.12); }
 
 /* ── Referral commission (editor) ── */
 .comm-row { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
@@ -564,13 +573,15 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   gap: 12px;
   flex-wrap: wrap;
   align-items: flex-end;
-  background: #f7f9fc;
-  border: 1px dashed var(--line);
+  background: #f8fafd;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--orange);
   border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
 }
 .pay-form .comm-field { min-width: 130px; flex: 1; }
+.pay-form .comm-field input, .pay-form .comm-field select { background: #fff; }
 .pay-form .pay-desc { flex: 2; min-width: 200px; }
 .pay-form-btns { display: flex; gap: 8px; }
 
@@ -590,6 +601,9 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 
 .kpi-link { cursor: pointer; }
 .kpi-link:hover { border-color: var(--blue); }
+
+/* profit-share totals row */
+.totals-row td { border-top: 2px solid var(--blue) !important; background: #f7f9fc; }
 
 /* ══ Mobile layout — driven by the topbar view toggle (.is-mobile),
      not media queries, so "Desktop view" works on phones too ══ */
@@ -615,7 +629,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .is-mobile .topbar { padding: 10px 12px; gap: 8px; }
 .is-mobile .topbar-title { display: none; }
 .is-mobile .view-toggle-label { display: none; }
-.is-mobile .user-chip { padding: 5px 10px; }
+.is-mobile .user-chip { display: none; }
 .is-mobile .content { padding: 14px 10px 70px; }
 .is-mobile .page-head h1 { font-size: 19px; }
 .is-mobile .form-grid { grid-template-columns: 1fr; }
@@ -634,8 +648,8 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .is-mobile .table-card .data-table { min-width: 760px; }
 .is-mobile .comm-row { align-items: stretch; flex-direction: column; }
 .is-mobile .comm-field { min-width: 0; }
-.is-mobile .tabs { overflow-x: auto; white-space: nowrap; flex-wrap: nowrap; }
-.is-mobile .tab { padding: 9px 12px; flex: 0 0 auto; }
+.is-mobile .tabs { display: flex; width: 100%; overflow-x: auto; white-space: nowrap; flex-wrap: nowrap; }
+.is-mobile .tab { padding: 8px 12px; flex: 1 0 auto; }
 .is-mobile .proj-grid { grid-template-columns: 1fr; }
 .is-mobile .pay-form { flex-direction: column; align-items: stretch; }
 .is-mobile .pay-form .comm-field { min-width: 0; }
@@ -643,7 +657,17 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .is-mobile .bal-strip .bal-final { margin-left: 0; width: 100%; }
 .is-mobile .preview-wrap { overflow-x: auto; justify-content: flex-start; }
 .is-mobile .inv-sheet { min-width: 720px; }
-.is-mobile .btn { padding: 8px 12px; }
+.is-mobile .btn { padding: 9px 12px; }
 .is-mobile .page-actions { width: 100%; }
+.is-mobile .page-actions .btn { flex: 1; justify-content: center; min-width: 0; }
+.is-mobile .mini-btn { padding: 6px 12px; font-size: 12.5px; }
 .is-mobile .mini-stats { gap: 12px; font-size: 12.5px; }
 .is-mobile .brand-row { flex-direction: column; }
+.is-mobile .kpi-value { font-size: 17px; }
+.is-mobile .kpi { padding: 12px 14px; }
+.is-mobile .filter-bar input[type="date"], .is-mobile .filter-bar select { flex: 1; min-width: 130px; }
+.is-mobile .card { padding: 14px; }
+.is-mobile .card-head-row { flex-wrap: wrap; gap: 8px; }
+.is-mobile .pay-form-btns { width: 100%; }
+.is-mobile .pay-form-btns .btn { flex: 1; justify-content: center; }
+.is-mobile h1 .badge { font-size: 9.5px; }

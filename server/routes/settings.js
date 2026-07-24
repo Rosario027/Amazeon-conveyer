@@ -12,6 +12,7 @@ const STRING_FIELDS = [
   'companyName', 'tagline', 'gstin', 'stateName', 'stateCode', 'email', 'phone',
   'invoiceTitle', 'invoicePrefix', 'paymentTerms', 'bankName', 'bankAccountName',
   'bankAccount', 'bankIfsc', 'bankBranch', 'upiId', 'declaration', 'signatory',
+  'owner1Name', 'owner2Name',
 ];
 const LIST_FIELDS = ['addressLines', 'footerLines', 'termsLines'];
 const BOOL_FIELDS = ['showBankDetails', 'showUpi'];

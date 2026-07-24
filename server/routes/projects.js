@@ -37,6 +37,13 @@ export function summarize(project, invoices, payments) {
   const supplierCost = Math.max(supplierPayable, supplierPaid);
   const income = r2(invoiced + billableExpenses);
   const costs = r2(supplierCost + companyExpenses + consultantPaid + invoiceCommissions);
+  const pnl = r2(income - costs);
+
+  // Owner split — profits AND losses divide by the project's share %.
+  const owner1Share = r2(project.owner1Share ?? 50);
+  const owner2Share = r2(100 - owner1Share);
+  const pnlOwner1 = r2((pnl * owner1Share) / 100);
+  const pnlOwner2 = r2(pnl - pnlOwner1); // remainder — the two always sum to pnl
 
   return {
     invoiced,
@@ -52,7 +59,11 @@ export function summarize(project, invoices, payments) {
     invoiceCommissions,
     income,
     costs,
-    pnl: r2(income - costs),
+    pnl,
+    owner1Share,
+    owner2Share,
+    pnlOwner1,
+    pnlOwner2,
     cashIn: customerPaid,
     cashOut: r2(supplierPaid + billableExpenses + companyExpenses + consultantPaid),
     netCash: r2(customerPaid - supplierPaid - billableExpenses - companyExpenses - consultantPaid),
@@ -157,12 +168,15 @@ router.post('/', async (req, res, next) => {
     const name = String(body.name || '').trim();
     if (!name) return res.status(400).json({ error: 'Project name is required.' });
     const project = await prisma.$transaction(async (tx) => {
+      const share = body.owner1Share === undefined || body.owner1Share === '' ? 50 : r2(body.owner1Share);
+      if (share < 0 || share > 100) throw Object.assign(new Error('Owner share must be between 0 and 100%.'), { status: 400 });
       const created = await tx.project.create({
         data: {
           name,
           customerName: String(body.customerName || '').trim(),
           supplierName: String(body.supplierName || '').trim(),
           supplierPayable: r2(body.supplierPayable),
+          owner1Share: share,
           notes: String(body.notes || ''),
           createdBy: req.user.username,
         },
@@ -173,7 +187,10 @@ router.post('/', async (req, res, next) => {
       });
     });
     res.json(project);
-  } catch (e) { next(e); }
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ error: e.message });
+    next(e);
+  }
 });
 
 // ── Detail: project + linked records + computed summary ──
@@ -203,6 +220,11 @@ router.put('/:id', async (req, res, next) => {
     }
     for (const f of ['customerName', 'supplierName', 'notes']) if (f in body) data[f] = String(body[f] || '');
     if ('supplierPayable' in body) data.supplierPayable = r2(body.supplierPayable);
+    if ('owner1Share' in body) {
+      const share = r2(body.owner1Share);
+      if (share < 0 || share > 100) return res.status(400).json({ error: 'Owner share must be between 0 and 100%.' });
+      data.owner1Share = share;
+    }
     if ('status' in body) data.status = body.status === 'completed' ? 'completed' : 'active';
     const project = await prisma.project.update({ where: { id: Number(req.params.id) }, data });
     res.json(project);

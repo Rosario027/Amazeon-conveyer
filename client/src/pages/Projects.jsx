@@ -6,7 +6,7 @@ import { formatINR } from '../utils/money.js';
 
 const money = (n) => `₹ ${formatINR(n)}`;
 
-const emptyForm = () => ({ name: '', customerName: '', supplierName: '', supplierPayable: '', notes: '' });
+const emptyForm = () => ({ name: '', customerName: '', supplierName: '', supplierPayable: '', owner1Share: 50, notes: '' });
 
 export default function Projects() {
   const navigate = useNavigate();
@@ -64,6 +64,10 @@ export default function Projects() {
             <label>Total payable to supplier (₹)
               <input type="number" min="0" step="any" value={form.supplierPayable} onChange={(e) => setForm({ ...form, supplierPayable: e.target.value })} />
             </label>
+            <label>Owner 1 share of P&amp;L (%)
+              <input type="number" min="0" max="100" step="any" value={form.owner1Share} onChange={(e) => setForm({ ...form, owner1Share: e.target.value })} />
+            </label>
+            <div className="hint">Owner 2 gets the remaining {Math.round((100 - (Number(form.owner1Share) || 0)) * 100) / 100}% — editable later from the project page.</div>
             <label className="span2">Notes
               <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="optional" />
             </label>
@@ -90,7 +94,7 @@ export default function Projects() {
             <div className="proj-card-head">
               <div>
                 <div className="proj-name">{p.name}</div>
-                <div className="proj-sub">{p.code}{p.customerName ? ` · ${p.customerName}` : ''}</div>
+                <div className="proj-sub">{p.code}{p.customerName ? ` · ${p.customerName}` : ''} · split {p.summary.owner1Share}／{p.summary.owner2Share}</div>
               </div>
               <span className={`badge ${p.status === 'active' ? 'badge-blue' : 'badge-slate'}`} style={{ marginLeft: 0 }}>{p.status}</span>
             </div>
