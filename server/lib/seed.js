@@ -32,6 +32,21 @@ export async function seed() {
   }
 
   const settings = await prisma.companySettings.findUnique({ where: { id: 1 } });
+
+  // Backfill the real owner names onto installs created before they were
+  // set. Only placeholders are replaced — a name the owners typed
+  // themselves is never overwritten.
+  if (settings) {
+    const PLACEHOLDERS = ['', 'Owner 1', 'Owner 2'];
+    const patch = {};
+    if (PLACEHOLDERS.includes((settings.owner1Name || '').trim())) patch.owner1Name = 'Pradeep';
+    if (PLACEHOLDERS.includes((settings.owner2Name || '').trim())) patch.owner2Name = 'Sony John';
+    if (Object.keys(patch).length) {
+      await prisma.companySettings.update({ where: { id: 1 }, data: patch });
+      console.log(`[seed] set owner names: ${Object.values(patch).join(', ')}`);
+    }
+  }
+
   if (!settings) {
     await prisma.companySettings.create({
       data: {

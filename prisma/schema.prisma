@@ -53,8 +53,8 @@ model CompanySettings {
   signatureDataUrl String?  @db.Text
   // The two company owners — every project's P&L is split between them
   // (per-project percentage, default 50/50).
-  owner1Name       String   @default("Owner 1")
-  owner2Name       String   @default("Owner 2")
+  owner1Name       String   @default("Pradeep")
+  owner2Name       String   @default("Sony John")
   // Reserve & surplus: this % of a project's profit is retained by the
   // company BEFORE the owners' shares are computed.
   reservePercent   Float    @default(0)

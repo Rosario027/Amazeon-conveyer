@@ -125,8 +125,8 @@ export default function ProjectDetail() {
   if (!proj) return <div className="page"><div className="muted">Loading…</div></div>;
 
   const s = proj.summary;
-  const o1 = settings?.owner1Name || 'Owner 1';
-  const o2 = settings?.owner2Name || 'Owner 2';
+  const o1 = settings?.owner1Name || 'Pradeep';
+  const o2 = settings?.owner2Name || 'Sony John';
   const pays = (type) => proj.payments.filter((p) => p.type === type);
   const expenses = pays('expense');
 

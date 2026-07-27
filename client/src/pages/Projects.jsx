@@ -45,6 +45,7 @@ function ProjectCard({ p, dim, onOpen, onRestore }) {
 export default function Projects() {
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
+  const [settings, setSettings] = useState(null);
   const [q, setQ] = useState('');
   const [form, setForm] = useState(emptyForm());
   const [showForm, setShowForm] = useState(false);
@@ -62,7 +63,13 @@ export default function Projects() {
     try { setRows(await api.projects({ include: 'all', ...filters })); setError(''); } catch (e) { setError(e.message); }
     setLoading(false);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    api.settings().then(setSettings).catch(() => {});
+  }, []);
+
+  const o1 = settings?.owner1Name || 'Pradeep';
+  const o2 = settings?.owner2Name || 'Sony John';
 
   const { live, closed, deleted } = useMemo(() => ({
     live: rows.filter((p) => !p.deletedAt && !p.summary.closed),
@@ -141,10 +148,10 @@ export default function Projects() {
             <label>Total payable to supplier (₹)
               <input type="number" min="0" step="any" value={form.supplierPayable} onChange={(e) => setForm({ ...form, supplierPayable: e.target.value })} />
             </label>
-            <label>Owner 1 share of P&amp;L (%)
+            <label>{o1}'s share of P&amp;L (%)
               <input type="number" min="0" max="100" step="any" value={form.owner1Share} onChange={(e) => setForm({ ...form, owner1Share: e.target.value })} />
             </label>
-            <div className="hint">Owner 2 gets the remaining {Math.round((100 - (Number(form.owner1Share) || 0)) * 100) / 100}% — editable later from the project page.</div>
+            <div className="hint">{o2} gets the remaining {Math.round((100 - (Number(form.owner1Share) || 0)) * 100) / 100}% — editable later from the project page.</div>
             <label className="span2">Notes
               <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="optional" />
             </label>

@@ -71,7 +71,7 @@ async function buildOverview() {
     const balance = r2(entitledClosed - withdrawn); // negative = over-drawn
     return {
       owner,
-      name: (owner === 1 ? settings?.owner1Name : settings?.owner2Name) || `Owner ${owner}`,
+      name: (owner === 1 ? settings?.owner1Name : settings?.owner2Name) || (owner === 1 ? 'Pradeep' : 'Sony John'),
       entitledClosed,
       lockedOpen,
       lifetimeShare: r2(entitledClosed + lockedOpen),

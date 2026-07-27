@@ -225,8 +225,8 @@ router.get('/export.xlsx', async (_req, res, next) => {
       reservePct(),
       prisma.companySettings.findUnique({ where: { id: 1 } }),
     ]);
-    const o1 = settings?.owner1Name || 'Owner 1';
-    const o2 = settings?.owner2Name || 'Owner 2';
+    const o1 = settings?.owner1Name || 'Pradeep';
+    const o2 = settings?.owner2Name || 'Sony John';
     const wb = new ExcelJS.Workbook();
     const headStyle = (row) => {
       row.font = { bold: true, color: { argb: 'FFFFFFFF' } };

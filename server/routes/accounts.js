@@ -76,7 +76,7 @@ async function buildLedger(from, to) {
     }),
   ]);
   const settings = await prisma.companySettings.findUnique({ where: { id: 1 }, select: { owner1Name: true, owner2Name: true } });
-  const ownerName = (n) => (n === 1 ? settings?.owner1Name : settings?.owner2Name) || `Owner ${n}`;
+  const ownerName = (n) => (n === 1 ? settings?.owner1Name : settings?.owner2Name) || (n === 1 ? 'Pradeep' : 'Sony John');
 
   const withCommission = invoices.filter((i) => i.commissionEnabled && i.commissionAmount > 0);
 
