@@ -46,6 +46,11 @@ router.put('/', async (req, res, next) => {
         data[f] = v;
       }
     }
+    if ('reservePercent' in body) {
+      const n = Number(body.reservePercent);
+      if (!Number.isFinite(n) || n < 0 || n > 100) return res.status(400).json({ error: 'Reserve must be between 0 and 100%.' });
+      data.reservePercent = Math.round(n * 100) / 100;
+    }
     if ('nextInvoiceSeq' in body) {
       const n = Number(body.nextInvoiceSeq);
       if (!Number.isInteger(n) || n < 1) return res.status(400).json({ error: 'Next invoice number must be a positive integer.' });

@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { LOGO_SRC } from '../logo.jsx';
 import { STATES } from '../utils/states.js';
+import { formatINR } from '../utils/money.js';
 
 function fileToDataUrl(file, maxBytes = 2 * 1024 * 1024) {
   return new Promise((resolve, reject) => {
@@ -103,6 +104,20 @@ export default function Settings() {
           <label>Owner 1 name<input value={s.owner1Name || ''} onChange={(e) => set({ owner1Name: e.target.value })} placeholder="e.g. Akash" /></label>
           <label>Owner 2 name<input value={s.owner2Name || ''} onChange={(e) => set({ owner2Name: e.target.value })} placeholder="e.g. Partner" /></label>
           <div className="hint span2">Each project carries its own share % (default 50／50) — change it on the project page under <b>Edit</b>.</div>
+        </div>
+      </div>
+
+      <div className="card">
+        <h2>Reserve &amp; Surplus <span className="muted h-sub">retained by the company before owners split the profit</span></h2>
+        <div className="form-grid">
+          <label>Reserve (% of project profit)
+            <input type="number" min="0" max="100" step="any" value={s.reservePercent ?? 0} onChange={(e) => set({ reservePercent: e.target.value })} />
+          </label>
+          <div className="hint">
+            On a ₹1,00,000 profit at <b>{Number(s.reservePercent) || 0}%</b>, ₹{formatINR((100000 * (Number(s.reservePercent) || 0)) / 100, false)} stays
+            with the company and ₹{formatINR(100000 - (100000 * (Number(s.reservePercent) || 0)) / 100, false)} is split between the owners.
+            Losses are never reserved — they divide in full.
+          </div>
         </div>
       </div>
 

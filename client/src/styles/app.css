@@ -605,6 +605,104 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 /* profit-share totals row */
 .totals-row td { border-top: 2px solid var(--blue) !important; background: #f7f9fc; }
 
+/* ── Project stages ── */
+.stage-card { padding-bottom: 14px; }
+.stage-track {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 2px 8px;
+}
+.stage-step {
+  flex: 1 0 auto;
+  min-width: 104px;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 9px;
+  padding: 9px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+.stage-step:hover { border-color: var(--blue); color: var(--blue); }
+.stage-dot {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #e9eef5;
+  color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 800;
+}
+.stage-step.done { border-color: #a6f4c5; background: #f4fdf7; color: var(--green); }
+.stage-step.done .stage-dot { background: var(--green); color: #fff; }
+.stage-step.current { border-color: var(--orange); background: #fff8f1; color: var(--orange-dark); font-weight: 700; }
+.stage-step.current .stage-dot { background: var(--orange); color: #fff; }
+.stage-label { line-height: 1.25; }
+
+/* greyed-out / deleted projects */
+.proj-dim { opacity: 0.62; background: #fbfcfe; }
+.proj-dim:hover { opacity: 1; }
+.proj-badges { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.proj-deleted-note {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.section-head { margin: 18px 2px 10px; }
+.section-head h2 { font-size: 15px; margin: 0; }
+.section-toggle {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: 14px 2px 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.section-toggle:hover { color: var(--blue); }
+.closed-block { border-top: 1px solid var(--line); margin-top: 18px; }
+.more-row { display: flex; justify-content: center; padding: 12px 0; }
+
+/* delete-with-reason box */
+.del-box {
+  margin-top: 14px;
+  border: 1px solid #f3c2bd;
+  background: #fffbfa;
+  border-radius: 10px;
+  padding: 14px;
+}
+.del-title { font-weight: 700; color: var(--red); margin-bottom: 4px; }
+
+/* stage timeline */
+.timeline { display: flex; flex-direction: column; }
+.tl-row { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #edf1f7; }
+.tl-row:last-child { border-bottom: none; }
+.tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--blue); margin-top: 5px; flex: 0 0 10px; }
+.tl-del .tl-dot { background: var(--red); }
+.tl-head { font-size: 13.5px; }
+.tl-note { font-size: 12.5px; color: var(--ink); margin: 2px 0; }
+
+/* partner dashboard */
+.owner-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+.owner-card { margin-bottom: 0; border-top: 4px solid var(--green); }
+.owner-card.owner-neg { border-top-color: var(--red); }
+.owner-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.owner-name { font-size: 15.5px; font-weight: 700; }
+.owner-big { font-size: 26px; font-weight: 800; margin: 8px 0 2px; font-variant-numeric: tabular-nums; }
+.lock-tag { margin-left: 6px; font-size: 11px; }
+.row-open td { background: #fffdf7; }
+
 /* ══ Mobile layout — driven by the topbar view toggle (.is-mobile),
      not media queries, so "Desktop view" works on phones too ══ */
 .is-mobile .sidebar {
@@ -664,6 +762,9 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .is-mobile .mini-stats { gap: 12px; font-size: 12.5px; }
 .is-mobile .brand-row { flex-direction: column; }
 .is-mobile .kpi-value { font-size: 17px; }
+.is-mobile .owner-grid { grid-template-columns: 1fr; }
+.is-mobile .owner-big { font-size: 22px; }
+.is-mobile .stage-step { min-width: 92px; font-size: 10px; }
 .is-mobile .kpi { padding: 12px 14px; }
 .is-mobile .filter-bar input[type="date"], .is-mobile .filter-bar select { flex: 1; min-width: 130px; }
 .is-mobile .card { padding: 14px; }

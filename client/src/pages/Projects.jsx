@@ -1,30 +1,74 @@
-// Projects — list with live money summaries + create form.
-import React, { useEffect, useState } from 'react';
+// Projects — live projects first (5 per view), then closed and deleted
+// projects greyed out at the bottom. Excel export of everything.
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { formatINR } from '../utils/money.js';
+import { stageLabel } from '../utils/stages.js';
 
 const money = (n) => `₹ ${formatINR(n)}`;
+const PAGE = 5; // list limit in a single view
 
 const emptyForm = () => ({ name: '', customerName: '', supplierName: '', supplierPayable: '', owner1Share: 50, notes: '' });
+
+function ProjectCard({ p, dim, onOpen, onRestore }) {
+  return (
+    <div className={`proj-card ${dim ? 'proj-dim' : ''}`} onClick={onOpen} role="button" tabIndex={0}
+      onKeyDown={(e) => e.key === 'Enter' && onOpen()}>
+      <div className="proj-card-head">
+        <div>
+          <div className="proj-name">{p.name}</div>
+          <div className="proj-sub">{p.code}{p.customerName ? ` · ${p.customerName}` : ''} · split {p.summary.owner1Share}／{p.summary.owner2Share}</div>
+        </div>
+        <div className="proj-badges">
+          {p.deletedAt
+            ? <span className="badge badge-red" style={{ marginLeft: 0 }}>deleted</span>
+            : <span className={`badge ${p.summary.closed ? 'badge-slate' : 'badge-blue'}`} style={{ marginLeft: 0 }}>{stageLabel(p.stage)}</span>}
+        </div>
+      </div>
+      <div className="proj-stats">
+        <div><em>Invoiced</em><b>{money(p.summary.invoiced)}</b></div>
+        <div><em>Receivable</em><b style={{ color: p.summary.receivable > 0 ? 'var(--orange-dark)' : 'var(--green)' }}>{money(p.summary.receivable)}</b></div>
+        <div><em>Supplier bal.</em><b>{money(p.summary.supplierBalance)}</b></div>
+        <div><em>P&amp;L</em><b style={{ color: p.summary.pnl < 0 ? 'var(--red)' : 'var(--green)' }}>{money(p.summary.pnl)}</b></div>
+      </div>
+      {p.deletedAt && (
+        <div className="proj-deleted-note">
+          <span>Reason: {p.deletedReason || '—'}{p.deletedBy ? ` · by ${p.deletedBy}` : ''}</span>
+          <button className="mini-btn" onClick={(e) => { e.stopPropagation(); onRestore(); }}>Restore</button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Projects() {
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [q, setQ] = useState('');
-  const [status, setStatus] = useState('');
   const [form, setForm] = useState(emptyForm());
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [livePage, setLivePage] = useState(1);
+  const [closedPage, setClosedPage] = useState(1);
+  const [delPage, setDelPage] = useState(1);
+  const [showClosed, setShowClosed] = useState(true);
+  const [showDeleted, setShowDeleted] = useState(false);
 
   const load = async (filters = {}) => {
     setLoading(true);
-    try { setRows(await api.projects(filters)); setError(''); } catch (e) { setError(e.message); }
+    try { setRows(await api.projects({ include: 'all', ...filters })); setError(''); } catch (e) { setError(e.message); }
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
+
+  const { live, closed, deleted } = useMemo(() => ({
+    live: rows.filter((p) => !p.deletedAt && !p.summary.closed),
+    closed: rows.filter((p) => !p.deletedAt && p.summary.closed),
+    deleted: rows.filter((p) => p.deletedAt),
+  }), [rows]);
 
   const create = async () => {
     setBusy(true);
@@ -38,11 +82,44 @@ export default function Projects() {
     setBusy(false);
   };
 
+  const restore = async (p) => {
+    if (!window.confirm(`Restore "${p.name}"?`)) return;
+    try { await api.restoreProject(p.id); await load({ q }); } catch (e) { setError(e.message); }
+  };
+
+  const exportXlsx = async () => {
+    try { await api.downloadProjects(); } catch (e) { setError(e.message); }
+  };
+
+  const Section = ({ title, list, page, setPage, dim, count }) => {
+    const shown = list.slice(0, page * PAGE);
+    return (
+      <>
+        <div className="section-head">
+          <h2>{title} <span className="muted h-sub">{count}</span></h2>
+        </div>
+        <div className="proj-grid">
+          {shown.map((p) => (
+            <ProjectCard key={p.id} p={p} dim={dim} onOpen={() => navigate(`/projects/${p.id}`)} onRestore={() => restore(p)} />
+          ))}
+        </div>
+        {list.length > shown.length && (
+          <div className="more-row">
+            <button className="btn btn-ghost" onClick={() => setPage(page + 1)}>
+              Show {Math.min(PAGE, list.length - shown.length)} more ({list.length - shown.length} hidden)
+            </button>
+          </div>
+        )}
+      </>
+    );
+  };
+
   return (
     <div className="page">
       <div className="page-head">
         <h1>Projects</h1>
         <div className="page-actions">
+          <button className="btn" onClick={exportXlsx}>⬇ Excel</button>
           <button className="btn btn-primary" onClick={() => setShowForm((v) => !v)}>{showForm ? 'Close' : '+ New Project'}</button>
         </div>
       </div>
@@ -79,37 +156,40 @@ export default function Projects() {
       )}
 
       <div className="card filter-bar">
-        <input className="filter-q" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && load({ q, status })} placeholder="Search project / customer / supplier" />
-        <select value={status} onChange={(e) => { setStatus(e.target.value); load({ q, status: e.target.value }); }}>
-          <option value="">All statuses</option>
-          <option value="active">Active</option>
-          <option value="completed">Completed</option>
-        </select>
-        <button className="btn" onClick={() => load({ q, status })}>Search</button>
+        <input className="filter-q" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && load({ q })} placeholder="Search project / customer / supplier" />
+        <button className="btn" onClick={() => load({ q })}>Search</button>
+        <button className="btn btn-ghost" onClick={() => { setQ(''); load(); }}>Clear</button>
       </div>
 
-      <div className="proj-grid">
-        {rows.map((p) => (
-          <button key={p.id} className="proj-card" onClick={() => navigate(`/projects/${p.id}`)}>
-            <div className="proj-card-head">
-              <div>
-                <div className="proj-name">{p.name}</div>
-                <div className="proj-sub">{p.code}{p.customerName ? ` · ${p.customerName}` : ''} · split {p.summary.owner1Share}／{p.summary.owner2Share}</div>
-              </div>
-              <span className={`badge ${p.status === 'active' ? 'badge-blue' : 'badge-slate'}`} style={{ marginLeft: 0 }}>{p.status}</span>
-            </div>
-            <div className="proj-stats">
-              <div><em>Invoiced</em><b>{money(p.summary.invoiced)}</b></div>
-              <div><em>Receivable</em><b style={{ color: p.summary.receivable > 0 ? 'var(--orange-dark)' : 'var(--green)' }}>{money(p.summary.receivable)}</b></div>
-              <div><em>Supplier bal.</em><b>{money(p.summary.supplierBalance)}</b></div>
-              <div><em>P&amp;L</em><b style={{ color: p.summary.pnl < 0 ? 'var(--red)' : 'var(--green)' }}>{money(p.summary.pnl)}</b></div>
-            </div>
+      {!loading && rows.length === 0 && (
+        <div className="card"><div className="muted empty-row" style={{ textAlign: 'center' }}>No projects yet — create your first one; invoices and payments all hang off projects.</div></div>
+      )}
+
+      {live.length > 0 && (
+        <Section title="Active projects" list={live} page={livePage} setPage={setLivePage} dim={false} count={`${live.length} running`} />
+      )}
+
+      {closed.length > 0 && (
+        <div className="closed-block">
+          <button className="section-toggle" onClick={() => setShowClosed((v) => !v)}>
+            {showClosed ? '▾' : '▸'} Completed projects ({closed.length})
           </button>
-        ))}
-        {!loading && rows.length === 0 && (
-          <div className="muted empty-row" style={{ gridColumn: '1/-1', textAlign: 'center' }}>No projects yet — create your first one; invoices and payments all hang off projects.</div>
-        )}
-      </div>
+          {showClosed && (
+            <Section title="Completed" list={closed} page={closedPage} setPage={setClosedPage} dim count={`${closed.length} closed`} />
+          )}
+        </div>
+      )}
+
+      {deleted.length > 0 && (
+        <div className="closed-block">
+          <button className="section-toggle" onClick={() => setShowDeleted((v) => !v)}>
+            {showDeleted ? '▾' : '▸'} Deleted projects ({deleted.length})
+          </button>
+          {showDeleted && (
+            <Section title="Deleted" list={deleted} page={delPage} setPage={setDelPage} dim count={`${deleted.length} removed — kept for the record`} />
+          )}
+        </div>
+      )}
     </div>
   );
 }

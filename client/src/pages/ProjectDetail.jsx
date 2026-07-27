@@ -9,6 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { formatINR } from '../utils/money.js';
 import { today, localISO } from '../utils/dates.js';
+import { STAGES, stageLabel, stageIndex } from '../utils/stages.js';
 
 const money = (n) => `₹ ${formatINR(n)}`;
 const d10 = (d) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -109,6 +110,9 @@ export default function ProjectDetail() {
   const [editProj, setEditProj] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [stageNote, setStageNote] = useState('');
+  const [pendingStage, setPendingStage] = useState('');
+  const [delReason, setDelReason] = useState(null); // null = closed, '' = open
 
   const load = () => api.project(id).then(setProj).catch((e) => setError(e.message));
   useEffect(() => {
@@ -160,14 +164,31 @@ export default function ProjectDetail() {
     setBusy(false);
   };
 
-  const toggleStatus = async () => {
-    try { await api.updateProject(proj.id, { status: proj.status === 'active' ? 'completed' : 'active' }); await load(); } catch (e) { setError(e.message); }
+  const removeProject = async () => {
+    const reason = (delReason || '').trim();
+    if (!reason) { setError('Please give a reason for deleting this project.'); return; }
+    setBusy(true);
+    try { await api.deleteProject(proj.id, reason); navigate('/projects'); } catch (e) { setError(e.message); setBusy(false); }
   };
 
-  const removeProject = async () => {
-    if (!window.confirm(`Delete project ${proj.name}? All its payment records will be removed (invoices must be unlinked first).`)) return;
-    try { await api.deleteProject(proj.id); navigate('/projects'); } catch (e) { setError(e.message); }
+  const restoreProject = async () => {
+    try { await api.restoreProject(proj.id); await load(); } catch (e) { setError(e.message); }
   };
+
+  const applyStage = async (stage) => {
+    setBusy(true);
+    setError('');
+    try {
+      await api.setProjectStage(proj.id, stage, stageNote);
+      setStageNote('');
+      setPendingStage('');
+      await load();
+    } catch (e) { setError(e.message); }
+    setBusy(false);
+  };
+
+  const curIdx = stageIndex(proj.stage);
+  const nextStage = STAGES[curIdx + 1];
 
   const activity = [
     ...proj.invoices.map((i) => ({ date: i.invoiceDate, text: `Invoice ${i.invoiceNo} — ${i.buyerName}`, amount: i.grandTotal, kind: 'in', cancelled: i.status === 'cancelled' })),
@@ -199,16 +220,68 @@ export default function ProjectDetail() {
         <h1>
           {proj.name}
           <span className="badge badge-blue">{proj.code}</span>
-          <span className={`badge ${proj.status === 'active' ? 'badge-orange' : 'badge-slate'}`}>{proj.status}</span>
+          <span className={`badge ${proj.deletedAt ? 'badge-red' : s.closed ? 'badge-slate' : 'badge-orange'}`}>
+            {proj.deletedAt ? 'deleted' : stageLabel(proj.stage)}
+          </span>
         </h1>
         <div className="page-actions">
           <button className="btn" onClick={() => navigate('/projects')}>← Projects</button>
-          <button className="btn" onClick={() => setEditProj(editProj ? null : { name: proj.name, customerName: proj.customerName, supplierName: proj.supplierName, supplierPayable: proj.supplierPayable, owner1Share: proj.owner1Share, notes: proj.notes })}>Edit</button>
-          <button className="btn" onClick={toggleStatus}>{proj.status === 'active' ? 'Mark Completed' : 'Reopen'}</button>
-          <button className="btn btn-primary" onClick={() => navigate(`/invoices/new?project=${proj.id}`)}>+ Raise Invoice</button>
+          {proj.deletedAt ? (
+            <button className="btn btn-primary" onClick={restoreProject}>Restore Project</button>
+          ) : (
+            <>
+              <button className="btn" onClick={() => setEditProj(editProj ? null : { name: proj.name, customerName: proj.customerName, supplierName: proj.supplierName, supplierPayable: proj.supplierPayable, owner1Share: proj.owner1Share, notes: proj.notes })}>Edit</button>
+              <button className="btn btn-primary" onClick={() => navigate(`/invoices/new?project=${proj.id}`)}>+ Raise Invoice</button>
+            </>
+          )}
         </div>
       </div>
       {error && <div className="alert error">{error}</div>}
+
+      {proj.deletedAt && (
+        <div className="alert error">
+          <b>This project is deleted.</b> Reason: {proj.deletedReason || '—'}
+          {proj.deletedBy ? ` · by ${proj.deletedBy}` : ''} · {d10(proj.deletedAt)}. It stays on record and can be restored.
+        </div>
+      )}
+
+      {/* ── Stage track ── */}
+      {!proj.deletedAt && (
+        <div className="card stage-card">
+          <div className="card-head-row">
+            <h2>Stage <span className="muted h-sub">every change is logged</span></h2>
+            {nextStage && (
+              <button className="btn btn-primary" onClick={() => applyStage(nextStage.key)} disabled={busy}>
+                Advance → {nextStage.label}
+              </button>
+            )}
+          </div>
+          <div className="stage-track">
+            {STAGES.map((st, i) => (
+              <button
+                key={st.key}
+                className={`stage-step ${i < curIdx ? 'done' : ''} ${i === curIdx ? 'current' : ''}`}
+                title={st.label}
+                onClick={() => setPendingStage(st.key === proj.stage ? '' : st.key)}
+              >
+                <span className="stage-dot">{i < curIdx ? '✓' : i + 1}</span>
+                <span className="stage-label">{st.label}</span>
+              </button>
+            ))}
+          </div>
+          {pendingStage && (
+            <div className="pay-form" style={{ marginTop: 12 }}>
+              <label className="comm-field pay-desc">Move to <b>{stageLabel(pendingStage)}</b> — note (optional)
+                <input value={stageNote} onChange={(e) => setStageNote(e.target.value)} placeholder="e.g. advance of ₹50,000 received via NEFT" />
+              </label>
+              <div className="pay-form-btns">
+                <button className="btn" onClick={() => { setPendingStage(''); setStageNote(''); }}>Cancel</button>
+                <button className="btn btn-primary" onClick={() => applyStage(pendingStage)} disabled={busy}>Confirm</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {editProj && (
         <div className="card">
@@ -225,10 +298,23 @@ export default function ProjectDetail() {
             <label className="span2">Notes<input value={editProj.notes} onChange={(e) => setEditProj({ ...editProj, notes: e.target.value })} /></label>
           </div>
           <div className="page-actions" style={{ marginTop: 12 }}>
-            <button className="btn btn-danger" onClick={removeProject}>Delete Project</button>
+            <button className="btn btn-danger" onClick={() => setDelReason(delReason === null ? '' : null)}>Delete Project</button>
             <button className="btn" onClick={() => setEditProj(null)}>Cancel</button>
             <button className="btn btn-primary" onClick={saveProject} disabled={busy}>Save</button>
           </div>
+          {delReason !== null && (
+            <div className="del-box">
+              <div className="del-title">Delete “{proj.name}”?</div>
+              <p className="muted tiny">The project is not erased — it greys out, drops to the bottom of the Projects list with this reason on record, and can be restored later.</p>
+              <label className="comm-field">Reason <span className="req">*</span>
+                <input value={delReason} onChange={(e) => setDelReason(e.target.value)} placeholder="e.g. customer cancelled the order" autoFocus />
+              </label>
+              <div className="pay-form-btns" style={{ marginTop: 10 }}>
+                <button className="btn" onClick={() => setDelReason(null)}>Keep project</button>
+                <button className="btn btn-danger" onClick={removeProject} disabled={busy || !delReason.trim()}>Confirm delete</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -256,9 +342,9 @@ export default function ProjectDetail() {
       </div>
 
       <div className="tabs">
-        {['overview', 'customer', 'supplier', 'expenses', 'consultant'].map((t) => (
+        {['overview', 'customer', 'supplier', 'expenses', 'consultant', 'log'].map((t) => (
           <button key={t} className={`tab ${tab === t ? 'sel' : ''}`} onClick={() => { setTab(t); setAddType(''); setEditPay(null); }}>
-            {t === 'overview' ? 'Overview' : t === 'customer' ? 'Customer' : t === 'supplier' ? 'Supplier' : t === 'expenses' ? 'Expenses' : 'Consultant'}
+            {t === 'overview' ? 'Overview' : t === 'customer' ? 'Customer' : t === 'supplier' ? 'Supplier' : t === 'expenses' ? 'Expenses' : t === 'consultant' ? 'Consultant' : 'Log'}
           </button>
         ))}
       </div>
@@ -277,9 +363,12 @@ export default function ProjectDetail() {
               <tr><td>Consultant payouts</td><td className="r">− {money(s.consultantPaid)}</td></tr>
               <tr><td>Invoice referral commissions</td><td className="r">− {money(s.invoiceCommissions)}</td></tr>
               <tr className="grand"><td>Project P&amp;L</td><td className="r" style={{ color: s.pnl < 0 ? 'var(--red)' : 'var(--green)' }}>{money(s.pnl)}</td></tr>
+              {s.reserve > 0 && <tr><td>Reserve &amp; surplus retained ({s.reservePercent}%)</td><td className="r">− {money(s.reserve)}</td></tr>}
+              <tr><td><b>Distributable to owners</b></td><td className="r"><b>{money(s.distributable)}</b></td></tr>
               <tr><td>{o1}'s share ({s.owner1Share}%)</td><td className="r" style={{ color: s.pnlOwner1 < 0 ? 'var(--red)' : 'var(--green)' }}>{money(s.pnlOwner1)}</td></tr>
               <tr><td>{o2}'s share ({s.owner2Share}%)</td><td className="r" style={{ color: s.pnlOwner2 < 0 ? 'var(--red)' : 'var(--green)' }}>{money(s.pnlOwner2)}</td></tr>
             </tbody></table>
+            {!s.closed && <div className="hint" style={{ marginTop: 8 }}>🔒 Profit becomes withdrawable once the project reaches <b>Completed</b>.</div>}
             {proj.notes && <div className="hint" style={{ marginTop: 10 }}>📝 {proj.notes}</div>}
           </div>
           <div className="card">
@@ -406,6 +495,32 @@ export default function ProjectDetail() {
             </div>
           )}
         </>
+      )}
+
+      {/* ══ LOG ══ */}
+      {tab === 'log' && (
+        <div className="card">
+          <h2>Stage history <span className="muted h-sub">who moved what, and when</span></h2>
+          {(!proj.stageLogs || proj.stageLogs.length === 0)
+            ? <div className="muted empty-row" style={{ textAlign: 'center' }}>No stage changes yet — the project is still at “{stageLabel(proj.stage)}”.</div>
+            : (
+              <div className="timeline">
+                {proj.stageLogs.map((l) => (
+                  <div key={l.id} className={`tl-row ${l.toStage === 'deleted' ? 'tl-del' : ''}`}>
+                    <div className="tl-dot" />
+                    <div className="tl-body">
+                      <div className="tl-head">
+                        {l.fromStage ? <>{stageLabel(l.fromStage)} <span className="muted">→</span> </> : null}
+                        <b>{l.toStage === 'deleted' ? 'Deleted' : stageLabel(l.toStage)}</b>
+                      </div>
+                      {l.note && <div className="tl-note">{l.note}</div>}
+                      <div className="muted tiny">{new Date(l.createdAt).toLocaleString('en-IN')}{l.byUsername ? ` · ${l.byUsername}` : ''}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+        </div>
       )}
     </div>
   );

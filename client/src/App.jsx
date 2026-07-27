@@ -46,7 +46,7 @@ function Sidebar({ open, onNavigate }) {
         <div className="nav-group">Projects</div>
         <NavLink to="/projects" className={link}><IcFolder />Projects</NavLink>
         <NavLink to="/payments" className={link}><IcPay />Payments</NavLink>
-        <NavLink to="/profit-share" className={link}><IcPie />Profit Share</NavLink>
+        <NavLink to="/profit-share" className={link}><IcPie />Partners</NavLink>
         <div className="nav-group">Invoicing</div>
         <NavLink to="/invoices/new" className={link}><IcNew />New Invoice</NavLink>
         <NavLink to="/invoices" end className={link}><IcList />Invoices</NavLink>

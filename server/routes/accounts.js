@@ -47,7 +47,7 @@ function entryData(body, username) {
 // commissions (out, derived from invoices) into one ledger.
 async function buildLedger(from, to) {
   const dateWhere = { gte: new Date(from), lte: new Date(`${to}T23:59:59`) };
-  const [manual, invoices, purchases, projectOutflows] = await Promise.all([
+  const [manual, invoices, purchases, projectOutflows, partnerDraws] = await Promise.all([
     prisma.accountEntry.findMany({ where: { entryDate: dateWhere }, orderBy: { entryDate: 'desc' } }),
     prisma.invoice.findMany({
       where: { status: 'active', invoiceDate: dateWhere },
@@ -69,7 +69,14 @@ async function buildLedger(from, to) {
       where: { payDate: dateWhere, type: { not: 'customer-payment' } },
       include: { project: { select: { name: true, code: true } } },
     }),
+    // Owner drawings — money leaving the business.
+    prisma.partnerWithdrawal.findMany({
+      where: { payDate: dateWhere },
+      include: { project: { select: { name: true, code: true } } },
+    }),
   ]);
+  const settings = await prisma.companySettings.findUnique({ where: { id: 1 }, select: { owner1Name: true, owner2Name: true } });
+  const ownerName = (n) => (n === 1 ? settings?.owner1Name : settings?.owner2Name) || `Owner ${n}`;
 
   const withCommission = invoices.filter((i) => i.commissionEnabled && i.commissionAmount > 0);
 
@@ -106,6 +113,13 @@ async function buildLedger(from, to) {
         : p.chargeTo === 'customer' ? 'Project Expense (billable)' : 'Project Expense',
       description: `${p.description || p.type} — ${p.project?.name || 'project'} (${p.project?.code || ''})`,
       mode: p.mode, refNo: p.refNo, amount: r2(p.amount),
+    })),
+    ...partnerDraws.map((w) => ({
+      source: 'partner', sourceId: w.id, date: w.payDate, kind: 'out',
+      entryType: '', partyName: ownerName(w.owner),
+      category: 'Owner Drawing',
+      description: `Owner drawing — ${ownerName(w.owner)}${w.project ? ` (${w.project.code})` : ''}${w.notes ? ` · ${w.notes}` : ''}`,
+      mode: w.mode, refNo: w.refNo, amount: r2(w.amount),
     })),
   ].sort((a, b) => new Date(b.date) - new Date(a.date));
 

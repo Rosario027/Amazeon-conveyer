@@ -14,6 +14,7 @@ import purchaseRoutes from './routes/purchases.js';
 import accountRoutes from './routes/accounts.js';
 import agentRoutes from './routes/agents.js';
 import projectRoutes from './routes/projects.js';
+import partnerRoutes from './routes/partners.js';
 import reportRoutes from './routes/reports.js';
 import dashboardRoutes from './routes/dashboard.js';
 
@@ -35,6 +36,7 @@ app.use('/api/purchases', purchaseRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/agents', agentRoutes);
 app.use('/api/projects', projectRoutes);
+app.use('/api/partners', partnerRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 

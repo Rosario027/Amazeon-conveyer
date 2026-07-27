@@ -55,6 +55,9 @@ model CompanySettings {
   // (per-project percentage, default 50/50).
   owner1Name       String   @default("Owner 1")
   owner2Name       String   @default("Owner 2")
+  // Reserve & surplus: this % of a project's profit is retained by the
+  // company BEFORE the owners' shares are computed.
+  reservePercent   Float    @default(0)
   updatedAt        DateTime @updatedAt
 }
 
@@ -91,12 +94,51 @@ model Project {
   supplierName    String           @default("")
   supplierPayable Float            @default(0) // total committed to supplier
   owner1Share     Float            @default(50) // % of P&L to owner 1 (owner 2 gets the rest)
+  // Workflow stage — manually advanced, every change is logged.
+  stage           String           @default("created")
+  // Soft delete: a deleted project greys out and drops to the bottom of
+  // the list; the reason is kept for the record and it can be restored.
+  deletedAt       DateTime?
+  deletedReason   String           @default("") @db.Text
+  deletedBy       String           @default("")
   notes           String           @default("") @db.Text
   createdBy       String           @default("")
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   invoices        Invoice[]
   payments        ProjectPayment[]
+  stageLogs       ProjectStageLog[]
+  withdrawals     PartnerWithdrawal[]
+}
+
+// Audit trail of stage movements (and delete / restore events).
+model ProjectStageLog {
+  id         Int      @id @default(autoincrement())
+  projectId  Int
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  fromStage  String   @default("")
+  toStage    String
+  note       String   @default("") @db.Text
+  byUsername String   @default("")
+  createdAt  DateTime @default(now())
+}
+
+// Money actually taken out by an owner. Withdrawals are only "free" once
+// the project is closed — drawing earlier shows as a negative balance
+// until closure clears it.
+model PartnerWithdrawal {
+  id        Int      @id @default(autoincrement())
+  owner     Int // 1 or 2
+  projectId Int?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  payDate   DateTime @default(now())
+  amount    Float    @default(0)
+  mode      String   @default("Bank") // Cash | Bank | UPI | Card | Other
+  refNo     String   @default("")
+  notes     String   @default("") @db.Text
+  createdBy String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Every money movement inside a project:
