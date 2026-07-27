@@ -22,10 +22,18 @@ const lastMonthRange = () => {
 };
 
 const emptyEntry = () => ({ entryDate: today(), kind: 'out', entryType: 'regular', partyName: '', category: 'General', description: '', mode: 'Cash', refNo: '', amount: '' });
+const emptyFund = () => ({ owner: 1, kind: 'drawing', drawType: 'profit', projectId: '', payDate: today(), amount: '', mode: 'Bank', refNo: '', notes: '' });
 const emptyAgent = () => ({ name: '', phone: '', pan: '', email: '', bankAccount: '', remarks: '' });
 
 export default function Accounts() {
   const [tab, setTab] = useState('ledger');
+  // Owner funds (drawings / capital introduced)
+  const [partners, setPartners] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [fund, setFund] = useState(() => emptyFund());
+  const [fundEditId, setFundEditId] = useState(null);
+  const [showFund, setShowFund] = useState(false);
+  const [fundPage, setFundPage] = useState(1);
   const [from, setFrom] = useState(monthStart());
   const [to, setTo] = useState(monthEnd());
   const [ledger, setLedger] = useState(null);
@@ -47,7 +55,50 @@ export default function Accounts() {
       setLedger(l); setComms(c); setAgents(a); setError('');
     } catch (e) { setError(e.message); }
   };
-  useEffect(() => { load(); }, []);
+  const loadFunds = async () => {
+    try {
+      const [p, ps] = await Promise.all([api.partnerOverview(), api.projects()]);
+      setPartners(p); setProjects(ps);
+    } catch (e) { setError(e.message); }
+  };
+  useEffect(() => { load(); loadFunds(); }, []);
+
+  const setF = (patch) => setFund((v) => ({ ...v, ...patch }));
+
+  const saveFund = async () => {
+    setBusy('fund');
+    setError('');
+    try {
+      if (fundEditId) {
+        await api.updateWithdrawal(fundEditId, fund);
+        flash('Movement updated.');
+      } else {
+        const res = await api.addWithdrawal(fund);
+        flash(res.warning || (fund.kind === 'introduction' ? 'Capital introduction recorded — posted to the ledger as money in.' : 'Drawing recorded — posted to the ledger as money out.'));
+      }
+      setFund(emptyFund());
+      setFundEditId(null);
+      setShowFund(false);
+      await Promise.all([loadFunds(), load()]);
+    } catch (e) { setError(e.message); }
+    setBusy('');
+  };
+
+  const editFund = (w) => {
+    setFundEditId(w.id);
+    setFund({
+      owner: w.owner, kind: w.kind || 'drawing', drawType: w.drawType || 'profit',
+      projectId: w.projectId || '', payDate: localISO(new Date(w.payDate)),
+      amount: w.amount, mode: w.mode, refNo: w.refNo, notes: w.notes,
+    });
+    setShowFund(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const removeFund = async (w) => {
+    if (!window.confirm(`Delete this ${formatINR(w.amount)} ${w.kind === 'introduction' ? 'capital introduction' : 'drawing'}?`)) return;
+    try { await api.deleteWithdrawal(w.id); await Promise.all([loadFunds(), load()]); } catch (e) { setError(e.message); }
+  };
 
   const flash = (msg) => { setNotice(msg); setTimeout(() => setNotice(''), 4000); };
   const preset = (p) => { setFrom(p.from); setTo(p.to); load(p.from, p.to); };
@@ -131,6 +182,14 @@ export default function Accounts() {
               </button>
             </>
           )}
+          {tab === 'funds' && (
+            <>
+              <button className="btn" onClick={() => api.downloadMovements(from, to).catch((e) => setError(e.message))}>⬇ Drawings Report</button>
+              <button className="btn btn-primary" onClick={() => { setFundEditId(null); setFund(emptyFund()); setShowFund((v) => !v); }}>
+                {showFund && !fundEditId ? 'Close' : '+ Record Movement'}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -138,6 +197,7 @@ export default function Accounts() {
         <button className={`tab ${tab === 'ledger' ? 'sel' : ''}`} onClick={() => setTab('ledger')}>Ledger</button>
         <button className={`tab ${tab === 'commissions' ? 'sel' : ''}`} onClick={() => setTab('commissions')}>Commissions</button>
         <button className={`tab ${tab === 'agents' ? 'sel' : ''}`} onClick={() => setTab('agents')}>Agents</button>
+        <button className={`tab ${tab === 'funds' ? 'sel' : ''}`} onClick={() => setTab('funds')}>Owner Funds</button>
       </div>
 
       {error && <div className="alert error">{error}</div>}
@@ -385,6 +445,172 @@ export default function Accounts() {
           </div>
         </>
       )}
+
+      {/* ══ OWNER FUNDS — profit / cash withdrawals and capital introduced ══ */}
+      {tab === 'funds' && (partners ? (() => {
+        const owner = partners.owners.find((o) => o.owner === Number(fund.owner)) || partners.owners[0];
+        const isIntro = fund.kind === 'introduction';
+        const selProj = partners.projects.find((p) => p.id === Number(fund.projectId));
+        const projEligible = selProj ? (Number(fund.owner) === 1 ? selProj.eligible1 : selProj.eligible2) : null;
+        const amt = Number(fund.amount) || 0;
+        const overDraw = !isIntro && fund.drawType === 'profit' && amt > owner.available;
+        const moves = partners.withdrawals;
+        const shown = moves.slice(0, fundPage * 5);
+
+        return (
+          <>
+            {showFund && (
+              <div className="card">
+                <h2>{fundEditId ? 'Edit movement' : 'Record a movement'} <span className="muted h-sub">posts to the ledger automatically</span></h2>
+
+                <div className="type-toggle" style={{ marginBottom: 14 }}>
+                  <button className={`type-btn ${!isIntro ? 'sel' : ''}`} onClick={() => setF({ kind: 'drawing' })}>
+                    <b>Taking out</b><span>Withdrawal — money leaves the business</span>
+                  </button>
+                  <button className={`type-btn ${isIntro ? 'sel' : ''}`} onClick={() => setF({ kind: 'introduction' })}>
+                    <b>Putting in</b><span>Capital introduced — money comes in</span>
+                  </button>
+                </div>
+
+                <div className="form-grid">
+                  <label>Owner
+                    <select value={fund.owner} onChange={(e) => setF({ owner: Number(e.target.value) })}>
+                      <option value={1}>{partners.owner1Name}</option>
+                      <option value={2}>{partners.owner2Name}</option>
+                    </select>
+                  </label>
+                  {!isIntro && (
+                    <label>Withdrawal type
+                      <select value={fund.drawType} onChange={(e) => setF({ drawType: e.target.value })}>
+                        <option value="profit">Profit withdrawal</option>
+                        <option value="cash">Cash withdrawal</option>
+                      </select>
+                    </label>
+                  )}
+                  <label>Against project (optional)
+                    <select value={fund.projectId} onChange={(e) => setF({ projectId: e.target.value })}>
+                      <option value="">— general —</option>
+                      {partners.projects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.code} — {p.name}{p.closed ? '' : ' (open)'}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>Date<input type="date" value={fund.payDate} onChange={(e) => setF({ payDate: e.target.value })} /></label>
+                  <label>Amount (₹)<input type="number" min="0" step="any" value={fund.amount} onChange={(e) => setF({ amount: e.target.value })} /></label>
+                  <label>Mode
+                    <select value={fund.mode} onChange={(e) => setF({ mode: e.target.value })}>{MODES.map((m) => <option key={m}>{m}</option>)}</select>
+                  </label>
+                  <label>Reference<input value={fund.refNo} onChange={(e) => setF({ refNo: e.target.value })} placeholder="txn / cheque no" /></label>
+                  <label className="span2">Notes<input value={fund.notes} onChange={(e) => setF({ notes: e.target.value })} placeholder="optional" /></label>
+                </div>
+
+                {!isIntro && (
+                  <div className={`elig-box ${overDraw ? 'elig-warn' : ''}`}>
+                    <div><em>{owner.name} can withdraw now</em><b>₹ {formatINR(owner.available)}</b></div>
+                    <div><em>Locked in open projects</em><b>₹ {formatINR(owner.lockedOpen)}</b></div>
+                    {selProj && (
+                      <div>
+                        <em>Eligible on {selProj.code}</em>
+                        <b>{selProj.closed ? `₹ ${formatINR(projEligible)}` : 'project still open'}</b>
+                      </div>
+                    )}
+                    {overDraw && (
+                      <div className="elig-msg">
+                        ⚠ ₹ {formatINR(amt)} is more than the ₹ {formatINR(owner.available)} available — allowed, but {owner.name}'s
+                        balance goes negative until more projects close.
+                      </div>
+                    )}
+                  </div>
+                )}
+                {isIntro && (
+                  <div className="hint" style={{ marginTop: 10 }}>
+                    Recorded as <b>Capital Introduced</b> — money in, credited back to {owner.name}'s balance.
+                  </div>
+                )}
+
+                <div className="page-actions" style={{ marginTop: 12 }}>
+                  <button className="btn" onClick={() => { setShowFund(false); setFundEditId(null); }}>Cancel</button>
+                  <button className="btn btn-primary" onClick={saveFund} disabled={busy === 'fund' || !(amt > 0)}>
+                    {busy === 'fund' ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="kpi-grid">
+              {partners.owners.map((o) => (
+                <div key={o.owner} className={`kpi ${o.balance < 0 ? 'kpi-red' : 'kpi-green'}`}>
+                  <div className="kpi-label">{o.name} — balance</div>
+                  <div className="kpi-value" style={{ color: o.balance < 0 ? 'var(--red)' : 'var(--green)' }}>₹ {formatINR(o.balance)}</div>
+                  <div className="kpi-sub">drawn {formatINR(o.withdrawn)} · introduced {formatINR(o.introduced)}</div>
+                </div>
+              ))}
+              <div className="kpi kpi-orange">
+                <div className="kpi-label">Total drawings</div>
+                <div className="kpi-value">₹ {formatINR(partners.cash.withdrawn)}</div>
+                <div className="kpi-sub">profit {formatINR(partners.cash.profitDrawn)} · cash {formatINR(partners.cash.cashDrawn)}</div>
+              </div>
+              <div className="kpi kpi-blue">
+                <div className="kpi-label">Capital introduced</div>
+                <div className="kpi-value">₹ {formatINR(partners.cash.introduced)}</div>
+                <div className="kpi-sub">company cash {formatINR(partners.cash.net)}</div>
+              </div>
+            </div>
+
+            <div className="card table-card">
+              <div className="card-head-row">
+                <h2>History <span className="muted h-sub">every drawing and introduction</span></h2>
+              </div>
+              <div className="table-scroll">
+                <table className="data-table">
+                  <thead>
+                    <tr><th>Date</th><th>Owner</th><th>Direction</th><th>Type</th><th>Project</th><th>Mode</th><th>Notes</th><th className="r">Amount</th><th /></tr>
+                  </thead>
+                  <tbody>
+                    {shown.map((w) => {
+                      const intro = w.kind === 'introduction';
+                      return (
+                        <tr key={w.id} style={{ cursor: 'default' }}>
+                          <td className="nowrap">{d10(w.payDate)}</td>
+                          <td><b>{w.owner === 1 ? partners.owner1Name : partners.owner2Name}</b></td>
+                          <td><span className={`badge ${intro ? 'badge-green' : 'badge-red'}`} style={{ marginLeft: 0 }}>{intro ? 'introduced' : 'drawn'}</span></td>
+                          <td>{intro ? 'Capital' : w.drawType === 'cash' ? 'Cash' : 'Profit'}</td>
+                          <td>{w.project ? <span className="proj-tag">{w.project.code}</span> : <span className="muted">general</span>}</td>
+                          <td>{w.mode}</td>
+                          <td className="desc-cell" title={w.notes}>{w.notes || '—'}</td>
+                          <td className="r" style={{ color: intro ? 'var(--green)' : 'var(--red)', fontWeight: 700 }}>
+                            {intro ? '+' : '−'} ₹ {formatINR(w.amount)}
+                          </td>
+                          <td className="r nowrap">
+                            <button className="mini-btn" onClick={() => editFund(w)}>Edit</button>
+                            <button className="mini-btn danger" onClick={() => removeFund(w)}>Delete</button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {moves.length === 0 && <tr><td colSpan={9} className="c muted empty-row">Nothing recorded yet.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+              {moves.length > shown.length && (
+                <div className="more-row">
+                  <button className="btn btn-ghost" onClick={() => setFundPage(fundPage + 1)}>
+                    Show {Math.min(5, moves.length - shown.length)} more
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="hint-card">
+              Profit is withdrawable only from <b>closed</b> projects — the eligible figure above updates as projects complete.
+              Every movement here posts to <b>Accounts → Ledger</b> automatically (drawings as money out, capital as money in)
+              and feeds the <b>Partners</b> dashboard.
+            </div>
+          </>
+        );
+      })() : <div className="muted">Loading…</div>)}
     </div>
   );
 }

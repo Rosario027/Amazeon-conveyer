@@ -28,6 +28,11 @@ export default function Settings() {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [logs, setLogs] = useState([]);
+  const [showLog, setShowLog] = useState(false);
+  const [logPage, setLogPage] = useState(1);
+
+  const loadLog = () => api.settingsLog().then(setLogs).catch(() => {});
 
   useEffect(() => {
     api.settings().then((data) => {
@@ -63,6 +68,7 @@ export default function Settings() {
       const fresh = await api.saveSettings(payload);
       setS(fresh);
       setSaved(true);
+      if (showLog) loadLog();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e) { setError(e.message); }
     setBusy(false);
@@ -184,6 +190,44 @@ export default function Settings() {
           </label>
           <label>Signatory label<input value={s.signatory} onChange={(e) => set({ signatory: e.target.value })} placeholder="Authorised Signatory" /></label>
         </div>
+      </div>
+
+      <div className="card">
+        <div className="card-head-row">
+          <h2>Change log <span className="muted h-sub">every settings edit is recorded</span></h2>
+          <button className="mini-btn" onClick={() => { setShowLog((v) => !v); if (!logs.length) loadLog(); }}>
+            {showLog ? 'hide' : 'show'}
+          </button>
+        </div>
+        {showLog && (
+          logs.length === 0
+            ? <div className="muted empty-row" style={{ textAlign: 'center' }}>No changes recorded yet.</div>
+            : (
+              <>
+                <div className="table-scroll">
+                  <table className="data-table">
+                    <thead><tr><th>When</th><th>Setting</th><th>From</th><th>To</th><th>By</th></tr></thead>
+                    <tbody>
+                      {logs.slice(0, logPage * 10).map((l) => (
+                        <tr key={l.id} style={{ cursor: 'default' }}>
+                          <td className="nowrap muted tiny">{new Date(l.createdAt).toLocaleString('en-IN')}</td>
+                          <td><b>{l.label || l.field}</b></td>
+                          <td className="desc-cell muted" title={l.oldValue}>{l.oldValue || <em>(empty)</em>}</td>
+                          <td className="desc-cell" title={l.newValue}>{l.newValue || <em>(empty)</em>}</td>
+                          <td>{l.byUsername || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {logs.length > logPage * 10 && (
+                  <div className="more-row">
+                    <button className="btn btn-ghost" onClick={() => setLogPage(logPage + 1)}>Show more</button>
+                  </div>
+                )}
+              </>
+            )
+        )}
       </div>
 
       <div className="save-bar">

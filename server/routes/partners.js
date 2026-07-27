@@ -62,13 +62,18 @@ async function buildOverview() {
     reserveClosed: acc(closedRows, (r) => r.s.reserve),
   };
 
-  const drawnBy = (owner) => acc(withdrawals.filter((w) => w.owner === owner), (w) => w.amount);
+  const isDraw = (w) => w.kind !== 'introduction';
+  const mine = (owner, pred = () => true) => withdrawals.filter((w) => w.owner === owner && pred(w));
   const owners = [1, 2].map((owner) => {
     const share = (r) => (owner === 1 ? r.s.pnlOwner1 : r.s.pnlOwner2);
     const entitledClosed = acc(closedRows, share);
     const lockedOpen = acc(openRows, share);
-    const withdrawn = drawnBy(owner);
-    const balance = r2(entitledClosed - withdrawn); // negative = over-drawn
+    const withdrawn = acc(mine(owner, isDraw), (w) => w.amount);
+    const profitDrawn = acc(mine(owner, (w) => isDraw(w) && w.drawType === 'profit'), (w) => w.amount);
+    const cashDrawn = acc(mine(owner, (w) => isDraw(w) && w.drawType === 'cash'), (w) => w.amount);
+    const introduced = acc(mine(owner, (w) => !isDraw(w)), (w) => w.amount);
+    // Capital an owner puts in is credited back to them.
+    const balance = r2(entitledClosed - withdrawn + introduced); // negative = over-drawn
     return {
       owner,
       name: (owner === 1 ? settings?.owner1Name : settings?.owner2Name) || (owner === 1 ? 'Pradeep' : 'Sony John'),
@@ -76,6 +81,10 @@ async function buildOverview() {
       lockedOpen,
       lifetimeShare: r2(entitledClosed + lockedOpen),
       withdrawn,
+      profitDrawn,
+      cashDrawn,
+      introduced,
+      netDrawn: r2(withdrawn - introduced),
       balance,
       available: Math.max(0, balance), // what they may draw right now
       overdrawn: balance < 0 ? r2(-balance) : 0,
@@ -89,17 +98,22 @@ async function buildOverview() {
   const outflow = allPayments.filter((x) => x.type !== 'customer-payment');
   const bucket = (list, cash) => acc(list.filter((x) => (cash ? CASH_MODES.includes(x.mode) : !CASH_MODES.includes(x.mode))), (x) => x.amount);
 
-  const cashIn = bucket(inflow, true);
-  const bankIn = bucket(inflow, false);
+  const draws = withdrawals.filter(isDraw);
+  const intros = withdrawals.filter((w) => !isDraw(w));
+  const cashIn = bucket(inflow, true) + bucket(intros, true);
+  const bankIn = bucket(inflow, false) + bucket(intros, false);
   const cashOut = bucket(outflow, true);
   const bankOut = bucket(outflow, false);
-  const cashDrawn = bucket(withdrawals, true);
-  const bankDrawn = bucket(withdrawals, false);
+  const cashDrawn = bucket(draws, true);
+  const bankDrawn = bucket(draws, false);
 
   const cash = {
     inflow: acc(inflow, (x) => x.amount),
     outflow: acc(outflow, (x) => x.amount),
-    withdrawn: acc(withdrawals, (w) => w.amount),
+    withdrawn: acc(draws, (w) => w.amount),
+    introduced: acc(intros, (w) => w.amount),
+    profitDrawn: acc(draws.filter((w) => w.drawType === 'profit'), (w) => w.amount),
+    cashDrawn: acc(draws.filter((w) => w.drawType === 'cash'), (w) => w.amount),
     inHand: r2(cashIn - cashOut - cashDrawn),
     inBank: r2(bankIn - bankOut - bankDrawn),
   };
@@ -110,15 +124,23 @@ async function buildOverview() {
 
   const projectRows = rows
     .sort((a, b) => Number(a.closed) - Number(b.closed) || new Date(b.p.updatedAt) - new Date(a.p.updatedAt))
-    .map(({ p, s, closed }) => ({
-      id: p.id, code: p.code, name: p.name, stage: p.stage, closed,
-      income: s.income, costs: s.costs, pnl: s.pnl,
-      reserve: s.reserve, distributable: s.distributable,
-      owner1Share: s.owner1Share, owner2Share: s.owner2Share,
-      pnlOwner1: s.pnlOwner1, pnlOwner2: s.pnlOwner2,
-      drawn1: acc(withdrawals.filter((w) => w.owner === 1 && w.projectId === p.id), (w) => w.amount),
-      drawn2: acc(withdrawals.filter((w) => w.owner === 2 && w.projectId === p.id), (w) => w.amount),
-    }));
+    .map(({ p, s, closed }) => {
+      const drawnOn = (owner) => acc(withdrawals.filter((w) => w.owner === owner && w.projectId === p.id && isDraw(w)), (w) => w.amount);
+      const drawn1 = drawnOn(1);
+      const drawn2 = drawnOn(2);
+      return {
+        id: p.id, code: p.code, name: p.name, stage: p.stage, closed,
+        income: s.income, costs: s.costs, pnl: s.pnl,
+        reserve: s.reserve, distributable: s.distributable,
+        owner1Share: s.owner1Share, owner2Share: s.owner2Share,
+        pnlOwner1: s.pnlOwner1, pnlOwner2: s.pnlOwner2,
+        drawn1,
+        drawn2,
+        // Profit still claimable from THIS project — only once it's closed.
+        eligible1: closed ? r2(s.pnlOwner1 - drawn1) : 0,
+        eligible2: closed ? r2(s.pnlOwner2 - drawn2) : 0,
+      };
+    });
 
   return {
     reservePercent: pct,
@@ -141,11 +163,15 @@ router.get('/overview', async (_req, res, next) => {
 // ── Withdrawals ──
 function withdrawalData(body, username) {
   const owner = Number(body.owner);
-  if (owner !== 1 && owner !== 2) throw Object.assign(new Error('Choose which owner is drawing the money.'), { status: 400 });
+  if (owner !== 1 && owner !== 2) throw Object.assign(new Error('Choose which owner the money moves for.'), { status: 400 });
   const amount = r2(body.amount);
   if (!(amount > 0)) throw Object.assign(new Error('Amount must be greater than zero.'), { status: 400 });
+  const kind = body.kind === 'introduction' ? 'introduction' : 'drawing';
+  const drawType = kind === 'introduction' ? 'capital' : (body.drawType === 'cash' ? 'cash' : 'profit');
   return {
     owner,
+    kind,
+    drawType,
     projectId: body.projectId ? Number(body.projectId) : null,
     payDate: body.payDate ? new Date(body.payDate) : new Date(),
     amount,
@@ -173,7 +199,7 @@ router.post('/withdrawals', async (req, res, next) => {
     res.json({
       withdrawal: created,
       balance: owner.balance,
-      warning: owner.balance < 0
+      warning: data.kind === 'drawing' && owner.balance < 0
         ? `${owner.name} is now over-drawn by ₹${Math.abs(owner.balance).toLocaleString('en-IN')} — this clears as projects close.`
         : '',
     });
@@ -202,6 +228,80 @@ router.delete('/withdrawals/:id', async (req, res, next) => {
   try {
     await prisma.partnerWithdrawal.delete({ where: { id: Number(req.params.id) } });
     res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+// ── Cash / additions / drawings report ──
+router.get('/movements.xlsx', async (req, res, next) => {
+  try {
+    const from = /^\d{4}-\d{2}-\d{2}$/.test(req.query.from || '') ? req.query.from : '1900-01-01';
+    const to = /^\d{4}-\d{2}-\d{2}$/.test(req.query.to || '') ? req.query.to : '2999-12-31';
+    const o = await buildOverview();
+    const rows = o.withdrawals.filter((w) => {
+      const d = d10(w.payDate);
+      return d >= from && d <= to;
+    });
+    const nameOf = (n) => (n === 1 ? o.owner1Name : o.owner2Name);
+    const wb = new ExcelJS.Workbook();
+    const headStyle = (row) => {
+      row.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      row.eachCell((c) => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E5AA8' } }; });
+    };
+    const sum = (list) => Math.round(list.reduce((t, x) => t + (x.amount || 0), 0) * 100) / 100;
+    const draws = rows.filter((w) => w.kind !== 'introduction');
+    const intros = rows.filter((w) => w.kind === 'introduction');
+
+    const s = wb.addWorksheet('Summary');
+    s.columns = [{ width: 36 }, { width: 18 }, { width: 18 }, { width: 16 }];
+    s.addRow(['Owner Drawings & Capital Introduced']).font = { bold: true, size: 14 };
+    s.addRow([`Period: ${from} to ${to}`]);
+    s.addRow([]);
+    headStyle(s.addRow(['Particulars', nameOf(1), nameOf(2), 'Total']));
+    const by = (list, n) => sum(list.filter((w) => w.owner === n));
+    const profitDraws = draws.filter((w) => w.drawType === 'profit');
+    const cashDraws = draws.filter((w) => w.drawType === 'cash');
+    s.addRow(['Profit withdrawals', by(profitDraws, 1), by(profitDraws, 2), sum(profitDraws)]);
+    s.addRow(['Cash withdrawals', by(cashDraws, 1), by(cashDraws, 2), sum(cashDraws)]);
+    s.addRow(['Total drawings', by(draws, 1), by(draws, 2), sum(draws)]).font = { bold: true };
+    s.addRow(['Capital introduced', by(intros, 1), by(intros, 2), sum(intros)]);
+    s.addRow(['Net drawn (drawings − introduced)', by(draws, 1) - by(intros, 1), by(draws, 2) - by(intros, 2), sum(draws) - sum(intros)]).font = { bold: true };
+    s.addRow([]);
+    headStyle(s.addRow(['Current position', nameOf(1), nameOf(2), '']));
+    s.addRow(['Entitled (closed projects)', o.owners[0].entitledClosed, o.owners[1].entitledClosed, '']);
+    s.addRow(['Locked in open projects', o.owners[0].lockedOpen, o.owners[1].lockedOpen, '']);
+    s.addRow(['Balance (available / negative)', o.owners[0].balance, o.owners[1].balance, '']).font = { bold: true };
+    s.addRow([]);
+    headStyle(s.addRow(['Company cash', 'Amount', '', '']));
+    s.addRow(['Cash in hand', o.cash.inHand, '', '']);
+    s.addRow(['In bank / digital', o.cash.inBank, '', '']);
+    s.addRow(['Total cash', o.cash.net, '', '']).font = { bold: true };
+
+    const d = wb.addWorksheet('Movements');
+    d.columns = [
+      { header: 'Date', key: 'date', width: 12 }, { header: 'Owner', key: 'owner', width: 18 },
+      { header: 'Direction', key: 'kind', width: 18 }, { header: 'Type', key: 'type', width: 14 },
+      { header: 'Project', key: 'proj', width: 28 }, { header: 'Mode', key: 'mode', width: 10 },
+      { header: 'Ref', key: 'ref', width: 14 }, { header: 'Notes', key: 'notes', width: 30 },
+      { header: 'Drawn', key: 'out', width: 14 }, { header: 'Introduced', key: 'in', width: 14 },
+    ];
+    headStyle(d.getRow(1));
+    for (const w of [...rows].reverse()) {
+      const isIntro = w.kind === 'introduction';
+      d.addRow({
+        date: d10(w.payDate), owner: nameOf(w.owner),
+        kind: isIntro ? 'Capital introduced' : 'Drawing',
+        type: isIntro ? 'Capital' : (w.drawType === 'cash' ? 'Cash' : 'Profit'),
+        proj: w.project ? `${w.project.code} — ${w.project.name}` : '(general)',
+        mode: w.mode, ref: w.refNo, notes: w.notes,
+        out: isIntro ? '' : r2(w.amount), in: isIntro ? r2(w.amount) : '',
+      });
+    }
+    d.addRow({ notes: 'TOTAL', out: sum(draws), in: sum(intros) }).font = { bold: true };
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="Drawings-and-Capital-${from}-to-${to}.xlsx"`);
+    await wb.xlsx.write(res);
+    res.end();
   } catch (e) { next(e); }
 });
 

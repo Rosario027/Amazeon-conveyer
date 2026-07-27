@@ -19,6 +19,50 @@ const BOOL_FIELDS = ['showBankDetails', 'showUpi'];
 const IMAGE_FIELDS = ['logoDataUrl', 'signatureDataUrl'];
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // ~2MB as data URL
 
+// Human labels for the change log.
+const LABELS = {
+  companyName: 'Company name', tagline: 'Tagline', gstin: 'GSTIN', stateName: 'State',
+  stateCode: 'State code', email: 'Email', phone: 'Phone', invoiceTitle: 'Invoice title',
+  invoicePrefix: 'Invoice prefix', paymentTerms: 'Payment terms', bankName: 'Bank name',
+  bankAccountName: 'Account holder', bankAccount: 'Account number', bankIfsc: 'IFSC',
+  bankBranch: 'Branch', upiId: 'UPI ID', declaration: 'Declaration', signatory: 'Signatory',
+  owner1Name: 'Owner 1 name', owner2Name: 'Owner 2 name',
+  addressLines: 'Address', footerLines: 'Footer lines', termsLines: 'Terms lines',
+  showBankDetails: 'Show bank details', showUpi: 'Show UPI',
+  logoDataUrl: 'Logo', signatureDataUrl: 'Signature',
+  reservePercent: 'Reserve & surplus %', nextInvoiceSeq: 'Next invoice number',
+};
+
+// Render a value for the log. Images are never stored in full — only
+// whether one was set or removed.
+function display(field, value) {
+  if (IMAGE_FIELDS.includes(field)) return value ? '(image set)' : '(none)';
+  if (Array.isArray(value)) return value.join(' | ');
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (value === null || value === undefined) return '';
+  return String(value);
+}
+
+// Diff the incoming patch against the stored row and write one log entry
+// per genuinely changed field.
+async function logChanges(before, data, username) {
+  const entries = [];
+  for (const [field, next] of Object.entries(data)) {
+    const oldValue = display(field, before?.[field]);
+    const newValue = display(field, next);
+    if (oldValue === newValue) continue;
+    entries.push({
+      field,
+      label: LABELS[field] || field,
+      oldValue: oldValue.slice(0, 500),
+      newValue: newValue.slice(0, 500),
+      byUsername: username || '',
+    });
+  }
+  if (entries.length) await prisma.settingsLog.createMany({ data: entries });
+  return entries.length;
+}
+
 router.get('/', async (_req, res, next) => {
   try {
     const settings = await prisma.companySettings.findUnique({ where: { id: 1 } });
@@ -56,8 +100,20 @@ router.put('/', async (req, res, next) => {
       if (!Number.isInteger(n) || n < 1) return res.status(400).json({ error: 'Next invoice number must be a positive integer.' });
       data.nextInvoiceSeq = n;
     }
+    const before = await prisma.companySettings.findUnique({ where: { id: 1 } });
     const settings = await prisma.companySettings.update({ where: { id: 1 }, data });
+    // Best-effort audit — a logging hiccup must never fail the save.
+    await logChanges(before, data, req.user.username).catch((err) => console.error('[settings-log]', err.message));
     res.json(settings);
+  } catch (e) { next(e); }
+});
+
+// ── Change log ──
+router.get('/log', async (req, res, next) => {
+  try {
+    const take = Math.min(Number(req.query.limit) || 100, 500);
+    const logs = await prisma.settingsLog.findMany({ orderBy: { createdAt: 'desc' }, take });
+    res.json(logs);
   } catch (e) { next(e); }
 });
 

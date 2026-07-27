@@ -61,6 +61,17 @@ model CompanySettings {
   updatedAt        DateTime @updatedAt
 }
 
+// Audit trail for company/invoice settings — one row per changed field.
+model SettingsLog {
+  id         Int      @id @default(autoincrement())
+  field      String
+  label      String   @default("")
+  oldValue   String   @default("") @db.Text
+  newValue   String   @default("") @db.Text
+  byUsername String   @default("")
+  createdAt  DateTime @default(now())
+}
+
 // ── Customers (auto-created / linked when an invoice is saved) ──
 model Customer {
   id        Int       @id @default(autoincrement())
@@ -123,12 +134,15 @@ model ProjectStageLog {
   createdAt  DateTime @default(now())
 }
 
-// Money actually taken out by an owner. Withdrawals are only "free" once
-// the project is closed — drawing earlier shows as a negative balance
-// until closure clears it.
+// Owner fund movements — money an owner takes OUT (drawing) or puts IN
+// (capital introduced). Drawings are only "free" once the project is
+// closed; drawing earlier shows as a negative balance until closure
+// clears it. Introductions credit the owner back.
 model PartnerWithdrawal {
   id        Int      @id @default(autoincrement())
   owner     Int // 1 or 2
+  kind      String   @default("drawing") // drawing | introduction
+  drawType  String   @default("profit") // drawings: profit | cash · introductions: capital
   projectId Int?
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   payDate   DateTime @default(now())

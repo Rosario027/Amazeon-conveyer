@@ -114,13 +114,18 @@ async function buildLedger(from, to) {
       description: `${p.description || p.type} — ${p.project?.name || 'project'} (${p.project?.code || ''})`,
       mode: p.mode, refNo: p.refNo, amount: r2(p.amount),
     })),
-    ...partnerDraws.map((w) => ({
-      source: 'partner', sourceId: w.id, date: w.payDate, kind: 'out',
-      entryType: '', partyName: ownerName(w.owner),
-      category: 'Owner Drawing',
-      description: `Owner drawing — ${ownerName(w.owner)}${w.project ? ` (${w.project.code})` : ''}${w.notes ? ` · ${w.notes}` : ''}`,
-      mode: w.mode, refNo: w.refNo, amount: r2(w.amount),
-    })),
+    // Owner fund movements post themselves to the books: money taken out
+    // is a drawing, money put in is capital introduced.
+    ...partnerDraws.map((w) => {
+      const intro = w.kind === 'introduction';
+      return {
+        source: 'partner', sourceId: w.id, date: w.payDate, kind: intro ? 'in' : 'out',
+        entryType: '', partyName: ownerName(w.owner),
+        category: intro ? 'Capital Introduced' : w.drawType === 'cash' ? 'Owner Drawing (Cash)' : 'Owner Drawing (Profit)',
+        description: `${intro ? 'Capital introduced by' : 'Drawing by'} ${ownerName(w.owner)}${w.project ? ` (${w.project.code})` : ''}${w.notes ? ` · ${w.notes}` : ''}`,
+        mode: w.mode, refNo: w.refNo, amount: r2(w.amount),
+      };
+    }),
   ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   const sum = (list) => r2(list.reduce((s, x) => s + x.amount, 0));
