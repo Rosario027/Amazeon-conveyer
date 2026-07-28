@@ -10,6 +10,7 @@ import { api } from '../api.js';
 import { formatINR } from '../utils/money.js';
 import { today, localISO } from '../utils/dates.js';
 import { STAGES, stageLabel, stageIndex } from '../utils/stages.js';
+import { IconLock, IconNote } from '../icons.jsx';
 
 const money = (n) => `₹ ${formatINR(n)}`;
 const d10 = (d) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -363,13 +364,13 @@ export default function ProjectDetail() {
               <tr><td>Consultant payouts</td><td className="r">− {money(s.consultantPaid)}</td></tr>
               <tr><td>Invoice referral commissions</td><td className="r">− {money(s.invoiceCommissions)}</td></tr>
               <tr className="grand"><td>Project P&amp;L</td><td className="r" style={{ color: s.pnl < 0 ? 'var(--red)' : 'var(--green)' }}>{money(s.pnl)}</td></tr>
-              {s.reserve > 0 && <tr><td>Reserve &amp; surplus retained ({s.reservePercent}%)</td><td className="r">− {money(s.reserve)}</td></tr>}
+              {s.reserve > 0 && <tr><td>Reserve &amp; surplus — {s.reservePercent}% of the P&amp;L above</td><td className="r">− {money(s.reserve)}</td></tr>}
               <tr><td><b>Distributable to owners</b></td><td className="r"><b>{money(s.distributable)}</b></td></tr>
               <tr><td>{o1}'s share ({s.owner1Share}%)</td><td className="r" style={{ color: s.pnlOwner1 < 0 ? 'var(--red)' : 'var(--green)' }}>{money(s.pnlOwner1)}</td></tr>
               <tr><td>{o2}'s share ({s.owner2Share}%)</td><td className="r" style={{ color: s.pnlOwner2 < 0 ? 'var(--red)' : 'var(--green)' }}>{money(s.pnlOwner2)}</td></tr>
             </tbody></table>
-            {!s.closed && <div className="hint" style={{ marginTop: 8 }}>🔒 Profit becomes withdrawable once the project reaches <b>Completed</b>.</div>}
-            {proj.notes && <div className="hint" style={{ marginTop: 10 }}>📝 {proj.notes}</div>}
+            {!s.closed && <div className="hint" style={{ marginTop: 8 }}><IconLock /> Profit becomes withdrawable once the project reaches <b>Completed</b>.</div>}
+            {proj.notes && <div className="hint" style={{ marginTop: 10 }}><IconNote /> {proj.notes}</div>}
           </div>
           <div className="card">
             <h2>Recent activity</h2>

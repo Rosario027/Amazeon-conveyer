@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api.js';
 import InvoicePreview from '../components/InvoicePreview.jsx';
+import { IconFolder, IconLock } from '../icons.jsx';
 
 export default function InvoiceView() {
   const { id } = useParams();
@@ -41,7 +42,7 @@ export default function InvoiceView() {
           <span className={`badge ${invoice.invoiceType === 'B2B' ? 'badge-blue' : 'badge-orange'}`}>{invoice.invoiceType}</span>
           {invoice.project && (
             <button className="proj-tag" onClick={() => navigate(`/projects/${invoice.project.id}`)}>
-              📁 {invoice.project.code} · {invoice.project.name}
+              <IconFolder /> {invoice.project.code} · {invoice.project.name}
             </button>
           )}
         </h1>
@@ -59,7 +60,7 @@ export default function InvoiceView() {
       </div>
       {invoice.commissionEnabled && invoice.commissionAmount > 0 && (
         <div className="comm-banner no-print">
-          🔒 Internal — referral commission: <b>₹ {invoice.commissionAmount.toLocaleString('en-IN')}</b> to{' '}
+          <IconLock /> Internal — referral commission: <b>₹ {invoice.commissionAmount.toLocaleString('en-IN')}</b> to{' '}
           <b>{invoice.agent?.name || '(agent removed)'}</b>
           {invoice.commissionType === 'percent' && <> ({invoice.commissionRate}% of taxable value)</>}
           {' '}· tracked in Accounts → Commissions · not printed on the invoice

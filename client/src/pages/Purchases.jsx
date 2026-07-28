@@ -5,6 +5,7 @@ import { api } from '../api.js';
 import { formatINR } from '../utils/money.js';
 
 import { today, monthStart, monthEnd, localISO } from '../utils/dates.js';
+import { IconPaperclip, IconDownload } from '../icons.jsx';
 const d10 = (d) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 const kb = (n) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(n / 1024)} KB`);
 
@@ -140,7 +141,7 @@ export default function Purchases() {
 
           <div className="upload-zone">
             <label className="btn btn-ghost file-btn">
-              📎 Attach bill (PDF / image / doc — max 10MB each)
+              <IconPaperclip /> Attach bill (PDF / image / doc — max 10MB each)
               <input type="file" multiple accept=".pdf,image/*,.doc,.docx,.xls,.xlsx,.csv" onChange={pickFiles} hidden />
             </label>
             {pendingFiles.map((f, i) => (
@@ -198,7 +199,7 @@ export default function Purchases() {
                   {p.files.map((f) => (
                     <span key={f.id} className="file-chip stored" title={`${f.filename} · ${kb(f.size)}`}>
                       <button className="chip-name" onClick={() => api.downloadPurchaseFile(p.id, f.id, f.filename).catch((e) => setError(e.message))}>
-                        ⬇ {f.filename.length > 22 ? f.filename.slice(0, 20) + '…' : f.filename}
+                        <IconDownload /> {f.filename.length > 22 ? f.filename.slice(0, 20) + '…' : f.filename}
                       </button>
                       <button onClick={() => removeFile(p, f)}>×</button>
                     </span>

@@ -9,13 +9,14 @@ import { api } from '../api.js';
 import { formatINR } from '../utils/money.js';
 import { today, localISO } from '../utils/dates.js';
 import { stageLabel } from '../utils/stages.js';
+import { IconDownload, IconLock } from '../icons.jsx';
 
 const money = (n) => `₹ ${formatINR(n)}`;
 const d10 = (d) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 const MODES = ['Bank', 'Cash', 'UPI', 'Card', 'Other'];
 const PAGE = 5;
 
-const emptyDraw = () => ({ owner: 1, projectId: '', payDate: today(), amount: '', mode: 'Bank', refNo: '', notes: '' });
+const emptyDraw = () => ({ owner: 1, kind: 'drawing', drawType: 'profit', projectId: '', payDate: today(), amount: '', mode: 'Bank', refNo: '', notes: '' });
 
 export default function ProfitShare() {
   const navigate = useNavigate();
@@ -70,7 +71,11 @@ export default function ProfitShare() {
 
   const startEdit = (w) => {
     setEditId(w.id);
-    setForm({ owner: w.owner, projectId: w.projectId || '', payDate: localISO(new Date(w.payDate)), amount: w.amount, mode: w.mode, refNo: w.refNo, notes: w.notes });
+    setForm({
+      owner: w.owner, kind: w.kind || 'drawing', drawType: w.drawType || 'profit',
+      projectId: w.projectId || '', payDate: localISO(new Date(w.payDate)),
+      amount: w.amount, mode: w.mode, refNo: w.refNo, notes: w.notes,
+    });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -94,7 +99,8 @@ export default function ProfitShare() {
         : 'available to withdraw now'}</div>
       <table className="totals-mini" style={{ marginTop: 10 }}><tbody>
         <tr><td>Share of closed projects</td><td className="r">{money(o.entitledClosed)}</td></tr>
-        <tr><td>Locked in open projects 🔒</td><td className="r">{money(o.lockedOpen)}</td></tr>
+        <tr><td>Locked in open projects <IconLock /></td><td className="r">{money(o.lockedOpen)}</td></tr>
+        <tr><td>Capital introduced</td><td className="r">+ {money(o.introduced)}</td></tr>
         <tr><td>Withdrawn to date</td><td className="r">− {money(o.withdrawn)}</td></tr>
         <tr className="grand"><td>Balance</td><td className="r" style={pnlColor(o.balance)}>{money(o.balance)}</td></tr>
       </tbody></table>
@@ -109,7 +115,7 @@ export default function ProfitShare() {
       <div className="page-head">
         <h1>Partner Dashboard <span className="muted h-sub">{data.owner1Name} · {data.owner2Name}</span></h1>
         <div className="page-actions">
-          <button className="btn" onClick={() => api.downloadPartnerReport().catch((e) => setError(e.message))}>⬇ Excel</button>
+          <button className="btn" onClick={() => api.downloadPartnerReport().catch((e) => setError(e.message))}><IconDownload /> Excel</button>
           <button className="btn btn-primary" onClick={() => { setEditId(null); setForm(emptyDraw()); setShowForm((v) => !v); }}>
             {showForm && !editId ? 'Close' : '+ Record Withdrawal'}
           </button>
@@ -120,8 +126,24 @@ export default function ProfitShare() {
 
       {showForm && (
         <div className="card">
-          <h2>{editId ? 'Edit withdrawal' : 'Record a withdrawal'} <span className="muted h-sub">money actually taken out by an owner</span></h2>
+          <h2>{editId ? 'Edit movement' : 'Record a movement'} <span className="muted h-sub">money taken out by, or put in by, an owner</span></h2>
+          <div className="type-toggle" style={{ marginBottom: 14 }}>
+            <button className={`type-btn ${form.kind !== 'introduction' ? 'sel' : ''}`} onClick={() => set({ kind: 'drawing' })}>
+              <b>Taking out</b><span>Withdrawal — money leaves the business</span>
+            </button>
+            <button className={`type-btn ${form.kind === 'introduction' ? 'sel' : ''}`} onClick={() => set({ kind: 'introduction' })}>
+              <b>Putting in</b><span>Capital introduced — money comes in</span>
+            </button>
+          </div>
           <div className="form-grid">
+            {form.kind !== 'introduction' && (
+              <label>Withdrawal type
+                <select value={form.drawType} onChange={(e) => set({ drawType: e.target.value })}>
+                  <option value="profit">Profit withdrawal</option>
+                  <option value="cash">Cash withdrawal</option>
+                </select>
+              </label>
+            )}
             <label>Owner
               <select value={form.owner} onChange={(e) => set({ owner: Number(e.target.value) })}>
                 <option value={1}>{data.owner1Name}</option>
@@ -165,9 +187,9 @@ export default function ProfitShare() {
           <div className="kpi-sub">costs {money(data.totals.costs)}</div>
         </div>
         <div className="kpi kpi-purple">
-          <div className="kpi-label">Reserve retained ({data.reservePercent}%)</div>
+          <div className="kpi-label">Reserve — {data.reservePercent}% of profit</div>
           <div className="kpi-value">{money(data.totals.reserve)}</div>
-          <div className="kpi-sub">distributable {money(data.totals.distributable)}</div>
+          <div className="kpi-sub">of P&amp;L {money(data.totals.pnl)} · distributable {money(data.totals.distributable)}</div>
         </div>
         <div className="kpi kpi-slate">
           <div className="kpi-label">Company cash</div>
@@ -194,8 +216,9 @@ export default function ProfitShare() {
             <h2>Cash position <span className="muted h-sub">what's left with the company</span></h2>
             <table className="totals-mini"><tbody>
               <tr><td>Received from customers</td><td className="r">{money(data.cash.inflow)}</td></tr>
+              <tr><td>Capital introduced by owners</td><td className="r">+ {money(data.cash.introduced)}</td></tr>
               <tr><td>Paid out (suppliers, expenses, consultants)</td><td className="r">− {money(data.cash.outflow)}</td></tr>
-              <tr><td>Owner withdrawals</td><td className="r">− {money(data.cash.withdrawn)}</td></tr>
+              <tr><td>Owner drawings (profit {money(data.cash.profitDrawn)} · cash {money(data.cash.cashDrawn)})</td><td className="r">− {money(data.cash.withdrawn)}</td></tr>
               <tr className="grand"><td>Cash with the company</td><td className="r">{money(data.cash.net)}</td></tr>
               <tr><td>&nbsp;&nbsp;• in hand (cash)</td><td className="r">{money(data.cash.inHand)}</td></tr>
               <tr><td>&nbsp;&nbsp;• in bank / digital</td><td className="r">{money(data.cash.inBank)}</td></tr>
@@ -228,7 +251,7 @@ export default function ProfitShare() {
                     <td><b>{p.name}</b><div className="muted tiny">{p.code}</div></td>
                     <td>
                       <span className={`badge ${p.closed ? 'badge-slate' : 'badge-blue'}`} style={{ marginLeft: 0 }}>{stageLabel(p.stage)}</span>
-                      {!p.closed && <span className="lock-tag" title="profit locked until the project closes">🔒</span>}
+                      {!p.closed && <span className="lock-tag" title="profit locked until the project closes"><IconLock /></span>}
                     </td>
                     <td className="r" style={pnlColor(p.pnl)}><b>{money(p.pnl)}</b></td>
                     <td className="r">{money(p.reserve)}</td>
@@ -257,24 +280,30 @@ export default function ProfitShare() {
         <div className="card table-card">
           <div className="table-scroll">
             <table className="data-table">
-              <thead><tr><th>Date</th><th>Owner</th><th>Project</th><th>Mode</th><th>Ref</th><th>Notes</th><th className="r">Amount</th><th /></tr></thead>
+              <thead><tr><th>Date</th><th>Owner</th><th>Direction</th><th>Type</th><th>Project</th><th>Mode</th><th>Notes</th><th className="r">Amount</th><th /></tr></thead>
               <tbody>
-                {shownDraws.map((w) => (
-                  <tr key={w.id} style={{ cursor: 'default' }}>
-                    <td className="nowrap">{d10(w.payDate)}</td>
-                    <td><b>{w.owner === 1 ? data.owner1Name : data.owner2Name}</b></td>
-                    <td>{w.project ? <span className="proj-tag">{w.project.code}</span> : <span className="muted">general</span>}</td>
-                    <td>{w.mode}</td>
-                    <td className="muted">{w.refNo || '—'}</td>
-                    <td className="desc-cell">{w.notes || '—'}</td>
-                    <td className="r" style={{ color: 'var(--red)', fontWeight: 700 }}>− {money(w.amount)}</td>
-                    <td className="r nowrap">
-                      <button className="mini-btn" onClick={() => startEdit(w)}>Edit</button>
-                      <button className="mini-btn danger" onClick={() => remove(w)}>Delete</button>
-                    </td>
-                  </tr>
-                ))}
-                {data.withdrawals.length === 0 && <tr><td colSpan={8} className="c muted empty-row">No withdrawals recorded yet.</td></tr>}
+                {shownDraws.map((w) => {
+                  const intro = w.kind === 'introduction';
+                  return (
+                    <tr key={w.id} style={{ cursor: 'default' }}>
+                      <td className="nowrap">{d10(w.payDate)}</td>
+                      <td><b>{w.owner === 1 ? data.owner1Name : data.owner2Name}</b></td>
+                      <td><span className={`badge ${intro ? 'badge-green' : 'badge-red'}`} style={{ marginLeft: 0 }}>{intro ? 'introduced' : 'drawn'}</span></td>
+                      <td>{intro ? 'Capital' : w.drawType === 'cash' ? 'Cash' : 'Profit'}</td>
+                      <td>{w.project ? <span className="proj-tag">{w.project.code}</span> : <span className="muted">general</span>}</td>
+                      <td>{w.mode}</td>
+                      <td className="desc-cell">{w.notes || '—'}</td>
+                      <td className="r" style={{ color: intro ? 'var(--green)' : 'var(--red)', fontWeight: 700 }}>
+                        {intro ? '+' : '−'} {money(w.amount)}
+                      </td>
+                      <td className="r nowrap">
+                        <button className="mini-btn" onClick={() => startEdit(w)}>Edit</button>
+                        <button className="mini-btn danger" onClick={() => remove(w)}>Delete</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {data.withdrawals.length === 0 && <tr><td colSpan={9} className="c muted empty-row">No withdrawals recorded yet.</td></tr>}
               </tbody>
             </table>
           </div>

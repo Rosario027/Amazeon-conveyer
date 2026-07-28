@@ -98,9 +98,22 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   top: 0;
   z-index: 20;
 }
-.hamburger { display: none; background: none; border: none; font-size: 20px; color: var(--ink); }
+.hamburger {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--ink);
+  padding: 6px;
+  border-radius: 8px;
+  line-height: 0;
+}
+.hamburger:hover { background: #eef2f7; }
 .topbar-title { font-weight: 600; color: var(--muted); font-size: 13.5px; }
 .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+/* Inline icons sit on the text baseline and inherit its colour. */
+.ic { display: inline-block; vertical-align: -0.14em; flex: none; }
+.btn .ic, .mini-btn .ic { vertical-align: -0.12em; }
+
 .view-toggle {
   display: inline-flex;
   align-items: center;
@@ -115,6 +128,9 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 }
 .view-toggle:hover { border-color: var(--blue); color: var(--blue); }
 .user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: #eaf1fa;
   color: var(--blue);
   border-radius: 20px;

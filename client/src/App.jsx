@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
 import { api, getStoredUser, getToken, clearAuth } from './api.js';
 import { Logo } from './logo.jsx';
+import { IconPhone, IconMonitor, IconMenu, IconUser } from './icons.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import InvoiceEditor from './pages/InvoiceEditor.jsx';
@@ -106,18 +107,19 @@ export default function App() {
       {menuOpen && <div className="sidebar-backdrop" onClick={() => setMenuOpen(false)} />}
       <div className="main-col">
         <header className="topbar">
-          <button className="hamburger" onClick={() => setMenuOpen((v) => !v)} aria-label="Menu">☰</button>
+          <button className="hamburger" onClick={() => setMenuOpen((v) => !v)} aria-label="Menu"><IconMenu size="20px" /></button>
           <div className="topbar-title">Amazeon Shopping · ERP</div>
           <div className="topbar-right">
             <button
               className="view-toggle"
               onClick={() => setViewMode(isMobile ? 'desktop' : 'mobile')}
-              title={isMobile ? 'Switch to Desktop view' : 'Switch to Mobile view'}
+              title={isMobile ? 'Switch to desktop view' : 'Switch to mobile view'}
+              aria-label={isMobile ? 'Switch to desktop view' : 'Switch to mobile view'}
             >
-              {isMobile ? '🖥️' : '📱'}
+              {isMobile ? <IconMonitor size="15px" /> : <IconPhone size="15px" />}
               <span className="view-toggle-label">{isMobile ? 'Desktop' : 'Mobile'}</span>
             </button>
-            <span className="user-chip">👤 {user.username}</span>
+            <span className="user-chip"><IconUser size="14px" /> {user.username}</span>
             <button className="btn-logout" onClick={logout}>Logout</button>
           </div>
         </header>

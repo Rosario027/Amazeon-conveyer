@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { formatINR } from '../utils/money.js';
+import { IconFolder } from '../icons.jsx';
 
 import { monthStart, monthEnd } from '../utils/dates.js';
 const d10 = (d) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -68,7 +69,7 @@ export default function Invoices() {
                 <td>
                   <b>{r.invoiceNo}</b>
                   {r.status === 'cancelled' && <span className="badge badge-red">CANCELLED</span>}
-                  {r.project && <div className="muted tiny">📁 {r.project.code} · {r.project.name}</div>}
+                  {r.project && <div className="muted tiny"><IconFolder /> {r.project.code} · {r.project.name}</div>}
                 </td>
                 <td>{d10(r.invoiceDate)}</td>
                 <td><span className={`badge ${r.invoiceType === 'B2B' ? 'badge-blue' : 'badge-orange'}`}>{r.invoiceType}</span></td>

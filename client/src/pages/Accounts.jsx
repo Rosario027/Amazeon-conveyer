@@ -7,6 +7,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '../api.js';
 import { formatINR } from '../utils/money.js';
 import { today, monthStart, monthEnd, localISO } from '../utils/dates.js';
+import { IconDownload, IconAlert } from '../icons.jsx';
 
 const d10 = (d) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
@@ -176,7 +177,7 @@ export default function Accounts() {
         <div className="page-actions">
           {tab === 'ledger' && (
             <>
-              <button className="btn" onClick={downloadExcel} disabled={busy === 'xlsx'}>{busy === 'xlsx' ? 'Building…' : '⬇ Download Excel'}</button>
+              <button className="btn" onClick={downloadExcel} disabled={busy === 'xlsx'}>{busy === 'xlsx' ? 'Building…' : <><IconDownload /> Download Excel</>}</button>
               <button className="btn btn-primary" onClick={() => { setEditingId(null); setForm(emptyEntry()); setShowForm((v) => !v); }}>
                 {showForm && !editingId ? 'Close' : '+ Add Entry'}
               </button>
@@ -184,7 +185,7 @@ export default function Accounts() {
           )}
           {tab === 'funds' && (
             <>
-              <button className="btn" onClick={() => api.downloadMovements(from, to).catch((e) => setError(e.message))}>⬇ Drawings Report</button>
+              <button className="btn" onClick={() => api.downloadMovements(from, to).catch((e) => setError(e.message))}><IconDownload /> Drawings Report</button>
               <button className="btn btn-primary" onClick={() => { setFundEditId(null); setFund(emptyFund()); setShowFund((v) => !v); }}>
                 {showFund && !fundEditId ? 'Close' : '+ Record Movement'}
               </button>
@@ -518,7 +519,7 @@ export default function Accounts() {
                     )}
                     {overDraw && (
                       <div className="elig-msg">
-                        ⚠ ₹ {formatINR(amt)} is more than the ₹ {formatINR(owner.available)} available — allowed, but {owner.name}'s
+                        <IconAlert /> ₹ {formatINR(amt)} is more than the ₹ {formatINR(owner.available)} available — allowed, but {owner.name}'s
                         balance goes negative until more projects close.
                       </div>
                     )}

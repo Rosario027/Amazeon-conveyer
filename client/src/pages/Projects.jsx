@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { formatINR } from '../utils/money.js';
 import { stageLabel } from '../utils/stages.js';
+import { IconDownload, IconChevronDown, IconChevronRight } from '../icons.jsx';
 
 const money = (n) => `₹ ${formatINR(n)}`;
 const PAGE = 5; // list limit in a single view
@@ -39,6 +40,31 @@ function ProjectCard({ p, dim, onOpen, onRestore }) {
         </div>
       )}
     </div>
+  );
+}
+
+// Kept at module scope so it isn't re-created (and re-mounted) on every
+// render of the page.
+function Section({ title, list, page, setPage, dim, count, onOpen, onRestore }) {
+  const shown = list.slice(0, page * PAGE);
+  return (
+    <>
+      <div className="section-head">
+        <h2>{title} <span className="muted h-sub">{count}</span></h2>
+      </div>
+      <div className="proj-grid">
+        {shown.map((p) => (
+          <ProjectCard key={p.id} p={p} dim={dim} onOpen={() => onOpen(p)} onRestore={() => onRestore(p)} />
+        ))}
+      </div>
+      {list.length > shown.length && (
+        <div className="more-row">
+          <button className="btn btn-ghost" onClick={() => setPage(page + 1)}>
+            Show {Math.min(PAGE, list.length - shown.length)} more ({list.length - shown.length} hidden)
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -98,35 +124,19 @@ export default function Projects() {
     try { await api.downloadProjects(); } catch (e) { setError(e.message); }
   };
 
-  const Section = ({ title, list, page, setPage, dim, count }) => {
-    const shown = list.slice(0, page * PAGE);
-    return (
-      <>
-        <div className="section-head">
-          <h2>{title} <span className="muted h-sub">{count}</span></h2>
-        </div>
-        <div className="proj-grid">
-          {shown.map((p) => (
-            <ProjectCard key={p.id} p={p} dim={dim} onOpen={() => navigate(`/projects/${p.id}`)} onRestore={() => restore(p)} />
-          ))}
-        </div>
-        {list.length > shown.length && (
-          <div className="more-row">
-            <button className="btn btn-ghost" onClick={() => setPage(page + 1)}>
-              Show {Math.min(PAGE, list.length - shown.length)} more ({list.length - shown.length} hidden)
-            </button>
-          </div>
-        )}
-      </>
-    );
-  };
+  const section = (title, list, page, setPage, dim, count) => (
+    <Section
+      title={title} list={list} page={page} setPage={setPage} dim={dim} count={count}
+      onOpen={(p) => navigate(`/projects/${p.id}`)} onRestore={restore}
+    />
+  );
 
   return (
     <div className="page">
       <div className="page-head">
         <h1>Projects</h1>
         <div className="page-actions">
-          <button className="btn" onClick={exportXlsx}>⬇ Excel</button>
+          <button className="btn" onClick={exportXlsx}><IconDownload /> Excel</button>
           <button className="btn btn-primary" onClick={() => setShowForm((v) => !v)}>{showForm ? 'Close' : '+ New Project'}</button>
         </div>
       </div>
@@ -172,29 +182,23 @@ export default function Projects() {
         <div className="card"><div className="muted empty-row" style={{ textAlign: 'center' }}>No projects yet — create your first one; invoices and payments all hang off projects.</div></div>
       )}
 
-      {live.length > 0 && (
-        <Section title="Active projects" list={live} page={livePage} setPage={setLivePage} dim={false} count={`${live.length} running`} />
-      )}
+      {live.length > 0 && section('Active projects', live, livePage, setLivePage, false, `${live.length} running`)}
 
       {closed.length > 0 && (
         <div className="closed-block">
           <button className="section-toggle" onClick={() => setShowClosed((v) => !v)}>
-            {showClosed ? '▾' : '▸'} Completed projects ({closed.length})
+            {showClosed ? <IconChevronDown /> : <IconChevronRight />} Completed projects ({closed.length})
           </button>
-          {showClosed && (
-            <Section title="Completed" list={closed} page={closedPage} setPage={setClosedPage} dim count={`${closed.length} closed`} />
-          )}
+          {showClosed && section('Completed', closed, closedPage, setClosedPage, true, `${closed.length} closed`)}
         </div>
       )}
 
       {deleted.length > 0 && (
         <div className="closed-block">
           <button className="section-toggle" onClick={() => setShowDeleted((v) => !v)}>
-            {showDeleted ? '▾' : '▸'} Deleted projects ({deleted.length})
+            {showDeleted ? <IconChevronDown /> : <IconChevronRight />} Deleted projects ({deleted.length})
           </button>
-          {showDeleted && (
-            <Section title="Deleted" list={deleted} page={delPage} setPage={setDelPage} dim count={`${deleted.length} removed — kept for the record`} />
-          )}
+          {showDeleted && section('Deleted', deleted, delPage, setDelPage, true, `${deleted.length} removed — kept for the record`)}
         </div>
       )}
     </div>

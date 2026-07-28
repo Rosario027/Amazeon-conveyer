@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { formatINR, formatRate } from '../utils/money.js';
+import { IconDownload } from '../icons.jsx';
 
 import { localISO as iso } from '../utils/dates.js';
 const thisMonth = () => {
@@ -54,7 +55,7 @@ export default function Reports() {
         <h1>Reports</h1>
         <div className="page-actions">
           <button className="btn btn-primary" onClick={downloadExcel} disabled={busy === 'xlsx'}>
-            {busy === 'xlsx' ? 'Building…' : '⬇ Download GST Report (Excel)'}
+            {busy === 'xlsx' ? 'Building…' : <><IconDownload /> Download GST Report (Excel)</>}
           </button>
         </div>
       </div>

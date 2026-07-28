@@ -32,7 +32,8 @@ router.get('/', async (req, res, next) => {
       // Project receivables (all-time, active projects): invoiced + billable
       // expenses − customer receipts.
       prisma.project.findMany({
-        where: { status: 'active' },
+        // Deleted projects must never inflate the receivable.
+        where: { status: 'active', deletedAt: null },
         include: {
           invoices: { where: { status: 'active' }, select: { grandTotal: true } },
           payments: { where: { type: { in: ['customer-payment', 'expense'] } }, select: { type: true, chargeTo: true, amount: true } },
