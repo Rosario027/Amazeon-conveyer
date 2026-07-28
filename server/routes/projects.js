@@ -37,15 +37,31 @@ export const STAGE_KEYS = STAGES.map((s) => s.key);
 export const isClosed = (p) => p.stage === 'completed' || p.status === 'completed';
 
 // ── The single source of truth for project money math ──
-//   receivable      = invoiced + customer-billable expenses − customer receipts
+//
+//   receivable = invoiced + customer-billable expenses − customer receipts
 //   supplierBalance = committed payable − supplier payments
-//   P&L             = (invoiced + billable exp)
-//                     − (supplier cost + company exp + consultant + invoice commissions)
-//   supplier cost uses max(committed, actually paid) so an unset/low
-//   commitment can never overstate profit.
+//
+//   INCOME = invoiced + billable expenses recovered from the customer
+//   COSTS  = supplier cost + company expenses + billable expenses
+//            + consultant payouts + invoice referral commissions
+//   P&L    = INCOME − COSTS
+//
+//   Supplier cost: the committed payable and the payments made against it
+//   are the SAME money — the payments settle the commitment, they are not
+//   a second cost. Adding both would double-count, so the cost is
+//   max(committed, actually paid): the full commitment is charged even if
+//   only part has been paid, and paying beyond the commitment raises the
+//   cost to what was actually spent.
+//
+//   Billable expenses sit on BOTH sides: the money went out (a cost) and
+//   the customer owes it back (income). Net effect on profit is zero —
+//   which is the point. Anything you also put on an invoice must be
+//   marked "company" instead, or the recovery is counted twice.
 export function summarize(project, invoices, payments, reservePercent = 0) {
   const activeInv = invoices.filter((i) => i.status === 'active');
   const invoiced = r2(activeInv.reduce((s, i) => s + (i.grandTotal || 0), 0));
+  const invoicedTaxable = r2(activeInv.reduce((s, i) => s + (i.subTotal || 0), 0));
+  const gstOnInvoices = r2(invoiced - invoicedTaxable);
   const invoiceCommissions = r2(activeInv.reduce((s, i) => s + (i.commissionEnabled ? i.commissionAmount || 0 : 0), 0));
 
   const customerPaid = sumAmt(payments.filter((p) => p.type === 'customer-payment'));
@@ -56,8 +72,9 @@ export function summarize(project, invoices, payments, reservePercent = 0) {
 
   const supplierPayable = r2(project.supplierPayable || 0);
   const supplierCost = Math.max(supplierPayable, supplierPaid);
+  const supplierCostBasis = supplierPaid > supplierPayable ? 'paid' : 'committed';
   const income = r2(invoiced + billableExpenses);
-  const costs = r2(supplierCost + companyExpenses + consultantPaid + invoiceCommissions);
+  const costs = r2(supplierCost + companyExpenses + billableExpenses + consultantPaid + invoiceCommissions);
   const pnl = r2(income - costs);
 
   // Reserve & surplus — a slice of PROFIT is retained by the company
@@ -75,10 +92,14 @@ export function summarize(project, invoices, payments, reservePercent = 0) {
 
   return {
     invoiced,
+    invoicedTaxable,
+    gstOnInvoices,
     invoiceCount: activeInv.length,
     customerPaid,
     billableExpenses,
     companyExpenses,
+    supplierCost,
+    supplierCostBasis,
     receivable: r2(invoiced + billableExpenses - customerPaid),
     supplierPayable,
     supplierPaid,
@@ -240,7 +261,7 @@ router.get('/export.xlsx', async (_req, res, next) => {
       { header: 'Invoiced', key: 'inv', width: 14 }, { header: 'Received', key: 'rec', width: 14 },
       { header: 'Receivable', key: 'due', width: 14 },
       { header: 'Supplier payable', key: 'sp', width: 16 }, { header: 'Supplier paid', key: 'spd', width: 14 },
-      { header: 'Supplier balance', key: 'sb', width: 16 },
+      { header: 'Supplier balance', key: 'sb', width: 16 }, { header: 'Supplier cost (P&L)', key: 'sc', width: 18 },
       { header: 'Expenses (company)', key: 'ec', width: 18 }, { header: 'Expenses (billable)', key: 'eb', width: 18 },
       { header: 'Consultant', key: 'con', width: 13 },
       { header: 'Income', key: 'income', width: 14 }, { header: 'Costs', key: 'costs', width: 14 },
@@ -258,7 +279,7 @@ router.get('/export.xlsx', async (_req, res, next) => {
         stage: (STAGES.find((x) => x.key === p.stage) || {}).label || p.stage,
         state: p.deletedAt ? 'DELETED' : s.closed ? 'Closed' : 'Active',
         inv: s.invoiced, rec: s.customerPaid, due: s.receivable,
-        sp: s.supplierPayable, spd: s.supplierPaid, sb: s.supplierBalance,
+        sp: s.supplierPayable, spd: s.supplierPaid, sb: s.supplierBalance, sc: s.supplierCost,
         ec: s.companyExpenses, eb: s.billableExpenses, con: s.consultantPaid,
         income: s.income, costs: s.costs, pnl: s.pnl,
         res: s.reserve, dist: s.distributable,

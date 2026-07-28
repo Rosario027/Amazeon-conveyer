@@ -356,13 +356,24 @@ export default function ProjectDetail() {
           <div className="card">
             <h2>P&amp;L breakdown</h2>
             <table className="totals-mini"><tbody>
-              <tr><td>Invoiced to customer</td><td className="r">{money(s.invoiced)}</td></tr>
-              <tr><td>Billable expenses (charged to customer)</td><td className="r">{money(s.billableExpenses)}</td></tr>
+              <tr><td>Invoiced to customer{s.gstOnInvoices > 0 && <div className="muted tiny">incl. GST {money(s.gstOnInvoices)} · net {money(s.invoicedTaxable)}</div>}</td><td className="r">{money(s.invoiced)}</td></tr>
+              {s.billableExpenses > 0 && <tr><td>Billable expenses recovered from customer</td><td className="r">{money(s.billableExpenses)}</td></tr>}
               <tr><td><b>Income</b></td><td className="r"><b>{money(s.income)}</b></td></tr>
-              <tr><td>Supplier cost {s.supplierPaid > s.supplierPayable ? '(paid exceeds committed)' : '(committed)'}</td><td className="r">− {money(Math.max(s.supplierPayable, s.supplierPaid))}</td></tr>
+              <tr>
+                <td>
+                  Supplier cost
+                  <div className="muted tiny">
+                    committed {money(s.supplierPayable)} · paid {money(s.supplierPaid)} —
+                    {s.supplierCostBasis === 'paid' ? ' paid exceeds the commitment, counting what was paid' : ' counting the full commitment'}
+                  </div>
+                </td>
+                <td className="r">− {money(s.supplierCost)}</td>
+              </tr>
               <tr><td>Company expenses</td><td className="r">− {money(s.companyExpenses)}</td></tr>
+              {s.billableExpenses > 0 && <tr><td>Billable expenses paid out</td><td className="r">− {money(s.billableExpenses)}</td></tr>}
               <tr><td>Consultant payouts</td><td className="r">− {money(s.consultantPaid)}</td></tr>
               <tr><td>Invoice referral commissions</td><td className="r">− {money(s.invoiceCommissions)}</td></tr>
+              <tr><td><b>Costs</b></td><td className="r"><b>− {money(s.costs)}</b></td></tr>
               <tr className="grand"><td>Project P&amp;L</td><td className="r" style={{ color: s.pnl < 0 ? 'var(--red)' : 'var(--green)' }}>{money(s.pnl)}</td></tr>
               {s.reserve > 0 && <tr><td>Reserve &amp; surplus — {s.reservePercent}% of the P&amp;L above</td><td className="r">− {money(s.reserve)}</td></tr>}
               <tr><td><b>Distributable to owners</b></td><td className="r"><b>{money(s.distributable)}</b></td></tr>
@@ -465,11 +476,16 @@ export default function ProjectDetail() {
           </div>
           <div className="card">
             <div className="card-head-row">
-              <h2>Expenses <span className="muted h-sub">company = project cost · customer = added to receivable</span></h2>
+              <h2>Expenses <span className="muted h-sub">company = project cost · customer = cost you recover</span></h2>
               {!addType && !editPay && <button className="mini-btn" onClick={() => setAddType('expense')}>+ Add expense</button>}
             </div>
             {formFor('expense', { desc: 'What was it for', descPh: 'e.g. transport, crane hire, site material' })}
             <PayTable rows={expenses} onEdit={startEdit} onDelete={deletePayment} />
+            <div className="hint" style={{ marginTop: 10 }}>
+              A <b>customer</b> expense is money you spent and will get back — it counts as a cost and adds the
+              same amount to the receivable, so profit is unaffected. If you instead put that item on an invoice,
+              mark the expense <b>company</b>, otherwise the recovery is counted twice.
+            </div>
           </div>
         </>
       )}
