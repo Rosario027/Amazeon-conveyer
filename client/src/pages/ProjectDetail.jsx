@@ -385,7 +385,7 @@ export default function ProjectDetail() {
           </div>
           <div className="card">
             <h2>Recent activity</h2>
-            {activity.length === 0 && <div className="muted">Nothing yet — raise an invoice or record a payment.</div>}
+            {activity.length === 0 && <div className="muted">No activity recorded yet.</div>}
             <div className="activity-list">
               {activity.map((a, i) => (
                 <div key={i} className={`activity-row ${a.cancelled ? 'row-cancelled' : ''}`}>

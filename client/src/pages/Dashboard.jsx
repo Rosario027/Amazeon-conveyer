@@ -51,7 +51,7 @@ export default function Dashboard() {
           <div className="kpi kpi-purple kpi-link" onClick={() => navigate('/projects')}>
             <div className="kpi-label">Projects receivable</div>
             <div className="kpi-value">₹ {formatINR(data.projects.receivable)}</div>
-            <div className="kpi-sub">{data.projects.active} active project{data.projects.active === 1 ? '' : 's'} — view all →</div>
+            <div className="kpi-sub">{data.projects.active} active project{data.projects.active === 1 ? '' : 's'} — tap to view</div>
           </div>
         )}
       </div>
@@ -75,7 +75,7 @@ export default function Dashboard() {
                 <td className="r"><b>₹ {formatINR(r.grandTotal)}</b></td>
               </tr>
             ))}
-            {data.recent.length === 0 && <tr><td colSpan={5} className="c muted empty-row">Nothing yet — raise your first invoice.</td></tr>}
+            {data.recent.length === 0 && <tr><td colSpan={5} className="c muted empty-row">No invoices recorded yet.</td></tr>}
           </tbody>
         </table>
       </div>
