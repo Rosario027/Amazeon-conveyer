@@ -90,13 +90,13 @@ export default function ProfitShare() {
       <div className="owner-head">
         <div className="owner-name">{o.name}</div>
         <span className={`badge ${o.balance < 0 ? 'badge-red' : 'badge-green'}`} style={{ marginLeft: 0 }}>
-          {o.balance < 0 ? 'over-drawn' : 'in credit'}
+          {o.balance < 0 ? 'overdrawn' : 'in credit'}
         </span>
       </div>
       <div className="owner-big" style={pnlColor(o.balance)}>{money(o.balance)}</div>
       <div className="muted tiny">{o.balance < 0
-        ? 'negative — clears as open projects close'
-        : 'available to withdraw now'}</div>
+        ? 'Balance is negative until open projects are closed'
+        : 'Available to withdraw'}</div>
       <table className="totals-mini" style={{ marginTop: 10 }}><tbody>
         <tr><td>Share of closed projects</td><td className="r">{money(o.entitledClosed)}</td></tr>
         <tr><td>Locked in open projects <IconLock /></td><td className="r">{money(o.lockedOpen)}</td></tr>
@@ -165,8 +165,8 @@ export default function ProfitShare() {
             <label className="span2">Notes<input value={form.notes} onChange={(e) => set({ notes: e.target.value })} placeholder="optional" /></label>
           </div>
           <div className="hint" style={{ marginTop: 8 }}>
-            Withdrawals are meant to happen after a project closes. Taking money out earlier is allowed —
-            the owner's balance simply goes negative until those projects are completed.
+            Ideally withdrawals happen after a project closes. Early withdrawals are allowed — the
+            owner's balance will show negative until the project completes and the profit lands.
           </div>
           <div className="page-actions" style={{ marginTop: 12 }}>
             <button className="btn" onClick={() => { setShowForm(false); setEditId(null); }}>Cancel</button>
@@ -177,24 +177,24 @@ export default function ProfitShare() {
 
       <div className="kpi-grid">
         <div className="kpi kpi-blue">
-          <div className="kpi-label">Total project revenue</div>
+          <div className="kpi-label">Total Revenue</div>
           <div className="kpi-value">{money(data.totals.revenue)}</div>
-          <div className="kpi-sub">{data.totals.projects} projects · {data.totals.closed} closed</div>
+          <div className="kpi-sub">{data.totals.projects} project{data.totals.projects !== 1 ? 's' : ''}, {data.totals.closed} closed</div>
         </div>
         <div className={`kpi ${data.totals.pnl < 0 ? 'kpi-red' : 'kpi-green'}`}>
-          <div className="kpi-label">Total P&amp;L</div>
+          <div className="kpi-label">Net Profit / Loss</div>
           <div className="kpi-value" style={pnlColor(data.totals.pnl)}>{money(data.totals.pnl)}</div>
-          <div className="kpi-sub">costs {money(data.totals.costs)}</div>
+          <div className="kpi-sub">total costs {money(data.totals.costs)}</div>
         </div>
         <div className="kpi kpi-purple">
-          <div className="kpi-label">Reserve — {data.reservePercent}% of profit</div>
+          <div className="kpi-label">Reserve ({data.reservePercent}% of profit)</div>
           <div className="kpi-value">{money(data.totals.reserve)}</div>
-          <div className="kpi-sub">of P&amp;L {money(data.totals.pnl)} · distributable {money(data.totals.distributable)}</div>
+          <div className="kpi-sub">{data.reservePercent}% of {money(data.totals.pnl)} — distributable: {money(data.totals.distributable)}</div>
         </div>
         <div className="kpi kpi-slate">
-          <div className="kpi-label">Company cash</div>
+          <div className="kpi-label">Company Cash</div>
           <div className="kpi-value">{money(data.cash.net)}</div>
-          <div className="kpi-sub">in hand {money(data.cash.inHand)} · bank {money(data.cash.inBank)}</div>
+          <div className="kpi-sub">cash in hand {money(data.cash.inHand)} · bank {money(data.cash.inBank)}</div>
         </div>
       </div>
 
@@ -226,8 +226,8 @@ export default function ProfitShare() {
               <tr><td>Held back as reserve &amp; surplus</td><td className="r">{money(data.cash.retainedReserve)}</td></tr>
             </tbody></table>
             <div className="hint" style={{ marginTop: 8 }}>
-              Set the reserve % in <b>Invoice Settings → Reserve &amp; Surplus</b>. Owner withdrawals also post to
-              Accounts → Ledger as “Owner Drawing”.
+              The reserve % is set under <b>Settings → Reserve &amp; Surplus</b>. Each withdrawal is also recorded
+              in Accounts as an owner drawing.
             </div>
           </div>
         </>

@@ -50,15 +50,20 @@ async function buildOverview() {
   const closedRows = rows.filter((r) => r.closed);
   const openRows = rows.filter((r) => !r.closed);
 
+  const totalPnl = acc(rows, (r) => r.s.pnl);
   const totals = {
     projects: rows.length,
     closed: closedRows.length,
     open: openRows.length,
     revenue: acc(rows, (r) => r.s.income),
     costs: acc(rows, (r) => r.s.costs),
-    pnl: acc(rows, (r) => r.s.pnl),
-    reserve: acc(rows, (r) => r.s.reserve),
-    distributable: acc(rows, (r) => r.s.distributable),
+    pnl: totalPnl,
+    // Reserve is 10% (configurable) of the company's TOTAL net profit —
+    // not the sum of per-project reserves.  Summing per-project can inflate
+    // the effective rate when loss projects reduce the total P&L without
+    // reducing the reserve pool.
+    reserve: r2(Math.max(0, totalPnl) * pct / 100),
+    distributable: r2(Math.max(0, totalPnl) - r2(Math.max(0, totalPnl) * pct / 100)),
     reserveClosed: acc(closedRows, (r) => r.s.reserve),
   };
 
